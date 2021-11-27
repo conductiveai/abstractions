@@ -46,7 +46,7 @@ WITH borrow AS (
             NULL::integer[] as trace_address,
             borrower,
             CASE
-                WHEN _reserve = '\xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE' THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2' --Use WETH instead of Aave "mock" address
+                WHEN _reserve = '\xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'::bytea THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea --Use WETH instead of Aave "mock" address
                 ELSE _reserve
             END AS asset_address,
             _amount AS asset_amount
@@ -146,7 +146,7 @@ WITH borrow AS (
             SELECT call_block_number, call_block_time, call_tx_hash, call_trace_address, "rad"/1e27 AS asset_amount, "src" AS borrower
             FROM makermcd."VAT_call_move"
             WHERE call_success
-            AND dst = '\x197e90f9fad81970ba7976f33cbd77088e5d7cf7'
+            AND dst = '\x197e90f9fad81970ba7976f33cbd77088e5d7cf7'::bytea
             AND rad > 0
             AND call_block_time >= start_ts
             AND call_block_time < end_ts

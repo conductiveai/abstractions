@@ -40,10 +40,10 @@ LEFT JOIN
       FROM bancornetwork.view_add_convertible_token
      ) p ON s.smart_token = p.smart_token
    AND s.convertible_token != p.convertible_token
-   AND (s.convertible_token NOT IN ('\x1f573d6fb3f13d689ff844b4ce37794d79a7ff1c',
-                                      '\x309627af60f0926daa6041b8279484312f2bf060')
-        OR (s.convertible_token = '\x1f573d6fb3f13d689ff844b4ce37794d79a7ff1c'
-            AND p.convertible_token = '\x309627af60f0926daa6041b8279484312f2bf060'))
+   AND (s.convertible_token NOT IN ('\x1f573d6fb3f13d689ff844b4ce37794d79a7ff1c'::bytea,
+                                      '\x309627af60f0926daa6041b8279484312f2bf060'::bytea)
+        OR (s.convertible_token = '\x1f573d6fb3f13d689ff844b4ce37794d79a7ff1c'::bytea
+            AND p.convertible_token = '\x309627af60f0926daa6041b8279484312f2bf060'::bytea))
    LEFT JOIN erc20.tokens t2 ON s.convertible_token = t2.contract_address) r ON q."_smartToken" = r.smart_token
 ;
 

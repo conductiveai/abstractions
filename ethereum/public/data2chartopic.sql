@@ -1,5 +1,4 @@
-DROP FUNCTION data2chartopic(BYTEA, INT);
-CREATE OR REPLACE FUNCTION data2chartopic(data BYTEA, topic INT) RETURNS CHAR(64) AS $$
+CREATE OR REPLACE FUNCTION public.data2chartopic(data BYTEA, topic INT) RETURNS CHAR(64) AS $$
 BEGIN
 RETURN SUBSTRING(ENCODE("data", 'hex'), (9+(64*"topic")), 64);
 END; $$

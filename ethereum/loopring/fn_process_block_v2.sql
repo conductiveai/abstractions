@@ -1,13 +1,13 @@
-DROP FUNCTION loopring.fn_process_block_v2;
+DROP FUNCTION IF EXISTS loopring.fn_process_block_v2;
 
-DROP TYPE loopring.transaction_struct;
-DROP TYPE loopring.deposit_struct;
-DROP TYPE loopring.withdraw_struct;
-DROP TYPE loopring.transfer_struct;
-DROP TYPE loopring.spot_trade_struct;
-DROP TYPE loopring.account_update_struct;
-DROP TYPE loopring.amm_update_struct;
-DROP TYPE loopring.signature_verification_struct;
+DROP TYPE IF EXISTS loopring.transaction_struct;
+DROP TYPE IF EXISTS loopring.deposit_struct;
+DROP TYPE IF EXISTS loopring.withdraw_struct;
+DROP TYPE IF EXISTS loopring.transfer_struct;
+DROP TYPE IF EXISTS loopring.spot_trade_struct;
+DROP TYPE IF EXISTS loopring.account_update_struct;
+DROP TYPE IF EXISTS loopring.amm_update_struct;
+DROP TYPE IF EXISTS loopring.signature_verification_struct;
 
 CREATE TYPE loopring.deposit_struct AS (
     toAddress bytea,

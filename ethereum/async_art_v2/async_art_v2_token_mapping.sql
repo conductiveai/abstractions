@@ -72,7 +72,7 @@ SELECT
 "tokenId" as token_id
 
 FROM async_art_v2."AsyncArtwork_v2_evt_Transfer"
-WHERE "from" = '\x0000000000000000000000000000000000000000'
+WHERE "from" = '\x0000000000000000000000000000000000000000'::bytea
 
 UNION
 
@@ -80,7 +80,7 @@ SELECT
 "tokenId" as token_id
 
 FROM async."AsyncArtwork_evt_Transfer"
-WHERE "from" = '\x0000000000000000000000000000000000000000'
+WHERE "from" = '\x0000000000000000000000000000000000000000'::bytea
 
 order by 1 asc
 ) as x) as y order by 1 asc

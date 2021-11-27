@@ -1,4 +1,4 @@
-CREATE TABLE stablecoin.transfer (
+CREATE TABLE IF NOT EXISTS stablecoin.transfer (
     "from" bytea,
     "to" bytea,
     coin_name text NOT NULL,

@@ -29,7 +29,7 @@ WITH rarible_trades AS (
     SELECT 
         'Rarible',
         '1',
-        '\x8c530a698b6e83d562db09079bc458d4dad4e6c5',
+        '\x8c530a698b6e83d562db09079bc458d4dad4e6c5'::bytea,
         'Trade',
         evt_tx_hash,
         evt_block_time,
@@ -49,7 +49,7 @@ WITH rarible_trades AS (
     SELECT
         'Rarible',
         '1',
-        '\xa5af48b105ddf2fa73cbaac61d420ea31b3c2a07',
+        '\xa5af48b105ddf2fa73cbaac61d420ea31b3c2a07'::bytea,
         'Trade',
         evt_tx_hash,
         evt_block_time,
@@ -69,7 +69,7 @@ WITH rarible_trades AS (
     SELECT
         'Rarible',
         '1',
-        '\x131aebbfe55bca0c9eaad4ea24d386c5c082dd58',
+        '\x131aebbfe55bca0c9eaad4ea24d386c5c082dd58'::bytea,
         'Trade',
         evt_tx_hash,
         evt_block_time,
@@ -89,7 +89,7 @@ WITH rarible_trades AS (
     SELECT
         'Rarible',
         '1',
-        '\x93f2a75d771628856f37f256da95e99ea28aafbe',
+        '\x93f2a75d771628856f37f256da95e99ea28aafbe'::bytea,
         'Trade',
         evt_tx_hash,
         evt_block_time,
@@ -109,7 +109,7 @@ WITH rarible_trades AS (
     SELECT
         'Rarible',
         '1',
-        '\xcd4ec7b66fbc029c116ba9ffb3e59351c20b5b06',
+        '\xcd4ec7b66fbc029c116ba9ffb3e59351c20b5b06'::bytea,
         'Trade',
         evt_tx_hash,
         evt_block_time,
@@ -122,7 +122,7 @@ WITH rarible_trades AS (
         "buyValue" * amount / "sellValue",
         "buyToken",
         CASE
-            WHEN "buyToken" = '\x0000000000000000000000000000000000000000' THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+            WHEN "buyToken" = '\x0000000000000000000000000000000000000000'::bytea THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
             ELSE "buyToken"
         END, 
         'ExchangeV1_evt_Buy' as category
@@ -134,7 +134,7 @@ WITH rarible_trades AS (
     SELECT
         'Rarible',
         '1',
-        '\xcd4ec7b66fbc029c116ba9ffb3e59351c20b5b06',
+        '\xcd4ec7b66fbc029c116ba9ffb3e59351c20b5b06'::bytea,
         'Trade',
         evt_tx_hash,
         evt_block_time,
@@ -147,7 +147,7 @@ WITH rarible_trades AS (
         amount,
         "sellToken", 
         CASE
-            WHEN "sellToken" = '\x0000000000000000000000000000000000000000' THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+            WHEN "sellToken" = '\x0000000000000000000000000000000000000000'::bytea THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
             ELSE "sellToken"
         END, -- currency_contract,
         'ExchangeV1_evt_Buy' as category
@@ -247,7 +247,7 @@ FROM erc721."ERC721_evt_Transfer" erc721
 INNER JOIN rarible_trades d ON erc721.evt_tx_hash = d.evt_tx_hash
 WHERE erc721.evt_block_time >= start_ts
 AND erc721.evt_block_time < end_ts
-AND erc721."from" <> '\x0000000000000000000000000000000000000000' -- Exclude mints
+AND erc721."from" <> '\x0000000000000000000000000000000000000000'::bytea -- Exclude mints
 UNION ALL
 SELECT
     erc1155.evt_tx_hash,
@@ -261,7 +261,7 @@ FROM erc1155."ERC1155_evt_TransferSingle" erc1155
 INNER JOIN rarible_trades d ON erc1155.evt_tx_hash = d.evt_tx_hash
 WHERE erc1155.evt_block_time >= start_ts
 AND erc1155.evt_block_time < end_ts
-AND erc1155."from" <> '\x0000000000000000000000000000000000000000' -- Exclude mints
+AND erc1155."from" <> '\x0000000000000000000000000000000000000000'::bytea -- Exclude mints
 ),
 -- aggregate NFT transfers per transaction 
 rarible_erc_subsets AS (
@@ -331,7 +331,7 @@ rows AS (
         COALESCE(erc.to_array[1], trades.buyer) AS buyer,
         trades.original_amount_raw / 10 ^ erc20.decimals AS original_amount,
         trades.original_amount_raw AS original_amount_raw,
-        CASE WHEN trades.original_currency_contract = '\x0000000000000000000000000000000000000000' THEN 'ETH' ELSE erc20.symbol END AS original_currency,
+        CASE WHEN trades.original_currency_contract = '\x0000000000000000000000000000000000000000'::bytea THEN 'ETH' ELSE erc20.symbol END AS original_currency,
         trades.original_currency_contract,
         trades.currency_contract,
         trades.nft_contract_address,

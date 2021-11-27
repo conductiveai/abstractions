@@ -17,7 +17,7 @@ FROM erc721."ERC721_evt_Transfer" erc721
 INNER JOIN foundation."market_evt_ReserveAuctionFinalized" f ON erc721.evt_tx_hash = f.evt_tx_hash
 WHERE erc721.evt_block_time >= start_ts
 AND erc721.evt_block_time < end_ts
-AND erc721."from" <> '\x0000000000000000000000000000000000000000' -- exclude mints
+AND erc721."from" <> '\x0000000000000000000000000000000000000000'::bytea -- exclude mints
 UNION ALL
 SELECT
     erc1155.evt_tx_hash,
@@ -31,7 +31,7 @@ FROM erc1155."ERC1155_evt_TransferSingle" erc1155
 INNER JOIN foundation."market_evt_ReserveAuctionFinalized" f ON erc1155.evt_tx_hash = f.evt_tx_hash
 WHERE erc1155.evt_block_time >= start_ts
 AND erc1155.evt_block_time < end_ts
-AND erc1155."from" <> '\x0000000000000000000000000000000000000000' -- exclude mints
+AND erc1155."from" <> '\x0000000000000000000000000000000000000000'::bytea -- exclude mints
 ),
 -- aggregate NFT transfers per transaction 
 foundation_erc_subsets AS (
@@ -139,7 +139,7 @@ rows AS (
     LEFT JOIN foundation."market_evt_ReserveAuctionCreated" created ON trades."auctionId" = created."auctionId"
     LEFT JOIN nft.tokens tokens ON tokens.contract_address = created."nftContract"
     LEFT JOIN prices.usd p ON p.minute = date_trunc('minute', trades.evt_block_time)
-        AND p.contract_address = '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+        AND p.contract_address = '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
         AND p.minute >= start_ts
         AND p.minute < end_ts
     WHERE trades.evt_block_time >= start_ts

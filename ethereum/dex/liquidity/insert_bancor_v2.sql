@@ -9,7 +9,7 @@ bancor_pools AS (
 SELECT
     DISTINCT contract_address AS pool_address,
     CASE 
-        WHEN "_reserveToken" = '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' THEN '\xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'
+        WHEN "_reserveToken" = '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'::bytea THEN '\xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'::bytea
         ELSE "_reserveToken"
     END AS token 
 FROM bancor."StandardPoolConverter_evt_LiquidityAdded" dex
@@ -20,7 +20,7 @@ dex_wallet_balances AS (
         balances.token_address,
         balances.amount_raw,
         balances.timestamp,
-        CASE WHEN balances.token_address = '\x1f573d6fb3f13d689ff844b4ce37794d79a7ff1c' THEN 'token_1'
+        CASE WHEN balances.token_address = '\x1f573d6fb3f13d689ff844b4ce37794d79a7ff1c'::bytea THEN 'token_1'
              ELSE 'token_0'
         END AS token_index
     FROM erc20.token_balances balances

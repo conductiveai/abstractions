@@ -47,7 +47,7 @@ WITH collateral_change AS (
             NULL::integer[] AS trace_address,
             "_user" AS borrower,
             CASE --Use WETH instead of Aave "mock" address
-                WHEN _reserve = '\xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE' THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+                WHEN _reserve = '\xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'::bytea THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
                 ELSE _reserve
             END AS asset_address,
             _amount AS asset_amount
@@ -68,7 +68,7 @@ WITH collateral_change AS (
             NULL::integer[] AS trace_address,
             "_user" AS borrower,
             CASE --Use WETH instead of Aave "mock" address
-                WHEN _reserve = '\xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE' THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+                WHEN _reserve = '\xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'::bytea THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
                 ELSE _reserve
             END AS asset_address,
             -"_amount" AS asset_amount

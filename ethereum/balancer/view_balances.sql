@@ -18,7 +18,7 @@ CREATE MATERIALIZED VIEW balancer.view_balances AS (
 
         SELECT e."to" as pool, date_trunc('day', e.evt_block_time) AS day, e.contract_address AS token, SUM(value) AS amount
         FROM erc20."ERC20_evt_Transfer" e
-        WHERE e."to" = '\xBA12222222228d8Ba445958a75a0704d566BF2C8'
+        WHERE e."to" = '\xBA12222222228d8Ba445958a75a0704d566BF2C8'::bytea
         GROUP BY 1, 2, 3
 
     ),
@@ -33,7 +33,7 @@ CREATE MATERIALIZED VIEW balancer.view_balances AS (
 
         SELECT e."from" as pool, date_trunc('day', e.evt_block_time) AS day, e.contract_address AS token, -SUM(value) AS amount
         FROM erc20."ERC20_evt_Transfer" e
-        WHERE e."from" = '\xBA12222222228d8Ba445958a75a0704d566BF2C8'
+        WHERE e."from" = '\xBA12222222228d8Ba445958a75a0704d566BF2C8'::bytea
         GROUP BY 1, 2, 3
     ),
     

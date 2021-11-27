@@ -1,4 +1,4 @@
-CREATE TABLE stablecoin.burn (
+CREATE TABLE IF NOT EXISTS stablecoin.burn (
     burner bytea,
     amount numeric,
     symbol text,
@@ -40,7 +40,7 @@ WITH burn AS (
                evt_index,
                NULL::integer[] as trace_address
         FROM erc20."ERC20_evt_Transfer" evt
-        WHERE "to" = '\x0000000000000000000000000000000000000000'
+        WHERE "to" = '\x0000000000000000000000000000000000000000'::bytea
        
         UNION ALL
   
@@ -54,8 +54,8 @@ WITH burn AS (
                evt_index,
                NULL::integer[]
         FROM erc20."ERC20_evt_Transfer" 
-        WHERE contract_address = '\xdac17f958d2ee523a2206206994597c13d831ec7' 
-        AND "to" = '\xc6cde7c39eb2f0f0095f41570af89efc2c1ea828'  -- USDT
+        WHERE contract_address = '\xdac17f958d2ee523a2206206994597c13d831ec7'::bytea
+        AND "to" = '\xc6cde7c39eb2f0f0095f41570af89efc2c1ea828'::bytea  -- USDT
 
         UNION ALL
 
@@ -64,13 +64,13 @@ WITH burn AS (
                call_tx_hash,
                "src", -- from
                "dst",
-               '\x6b175474e89094c44da98b954eedeac495271d0f', -- DAI
+               '\x6b175474e89094c44da98b954eedeac495271d0f'::bytea, -- DAI
                "rad" / 1e27,
                NULL::integer,
                call_trace_address
         FROM makermcd."VAT_call_move" maker
         WHERE call_success = 'true'
-        AND src = '\x197e90f9fad81970ba7976f33cbd77088e5d7cf7'
+        AND src = '\x197e90f9fad81970ba7976f33cbd77088e5d7cf7'::bytea
     ) burns
     INNER JOIN erc20.stablecoins st 
         ON st.contract_address = burns.contract_address

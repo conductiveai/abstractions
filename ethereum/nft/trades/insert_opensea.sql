@@ -11,7 +11,7 @@ WITH wyvern_calldata AS (
         addrs [9] AS seller,
         addrs [7] AS original_currency_address,
         CASE -- Replace `ETH` with `WETH` for ERC20 lookup later
-            WHEN addrs [7] = '\x0000000000000000000000000000000000000000' THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+            WHEN addrs [7] = '\x0000000000000000000000000000000000000000'::bytea THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
             ELSE addrs [7]
         END AS currency_token,
         CAST(
@@ -43,7 +43,7 @@ FROM erc721."ERC721_evt_Transfer" erc721
 INNER JOIN opensea."WyvernExchange_evt_OrdersMatched" trades ON erc721.evt_tx_hash = trades.evt_tx_hash
 WHERE erc721.evt_block_time >= start_ts
 AND erc721.evt_block_time < end_ts
-AND erc721."from" <> '\x0000000000000000000000000000000000000000' -- Exclude mints
+AND erc721."from" <> '\x0000000000000000000000000000000000000000'::bytea -- Exclude mints
 UNION ALL
 SELECT
     erc1155.evt_tx_hash,
@@ -57,7 +57,7 @@ FROM erc1155."ERC1155_evt_TransferSingle" erc1155
 INNER JOIN opensea."WyvernExchange_evt_OrdersMatched" trades ON erc1155.evt_tx_hash = trades.evt_tx_hash
 WHERE erc1155.evt_block_time >= start_ts
 AND erc1155.evt_block_time < end_ts
-AND erc1155."from" <> '\x0000000000000000000000000000000000000000' -- Exclude mints
+AND erc1155."from" <> '\x0000000000000000000000000000000000000000'::bytea -- Exclude mints
 ),
 -- aggregate NFT transfers per transaction 
 opensea_erc_subsets AS (
@@ -128,7 +128,7 @@ rows AS (
         wc.buyer,
         trades.price / 10 ^ erc20.decimals AS original_amount,
         trades.price AS original_amount_raw,
-        CASE WHEN wc.original_currency_address = '\x0000000000000000000000000000000000000000' THEN 'ETH' ELSE erc20.symbol END AS original_currency,
+        CASE WHEN wc.original_currency_address = '\x0000000000000000000000000000000000000000'::bytea THEN 'ETH' ELSE erc20.symbol END AS original_currency,
         wc.original_currency_address AS original_currency_contract,
         wc.currency_token AS currency_contract,
         COALESCE(erc.contract_address_array[1], wc.nft_contract_address) AS nft_contract_address,
@@ -178,7 +178,7 @@ rows AS (
         NOT EXISTS (SELECT * -- Exclude OpenSea mint transactions
             FROM erc721."ERC721_evt_Transfer" erc721
             WHERE trades.evt_tx_hash = erc721.evt_tx_hash
-            AND erc721."from" = '\x0000000000000000000000000000000000000000')
+            AND erc721."from" = '\x0000000000000000000000000000000000000000'::bytea)
         AND trades.evt_block_time >= start_ts
         AND trades.evt_block_time < end_ts
     ON CONFLICT DO NOTHING

@@ -179,7 +179,7 @@ WITH rows AS (
             NULL::integer[] AS trace_address,
             evt_index
         FROM zeroex."view_0x_api_fills"
-        where affiliate_address ='\x86003b044f70dac0abc80ac8957305b6370893ed'
+        where affiliate_address ='\x86003b044f70dac0abc80ac8957305b6370893ed'::bytea
     ) dexs
     INNER JOIN ethereum.transactions tx
         ON dexs.tx_hash = tx.hash

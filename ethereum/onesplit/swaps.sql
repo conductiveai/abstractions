@@ -31,11 +31,11 @@ WITH swap AS (
         from_amount * (
             CASE
                 WHEN from_token IN (
-                    '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', -- ETH
-                    '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', -- WETH
-                    '\x5e74c9036fb86bd7ecdcb084a0673efc32ea31cb', -- sETH
-                    '\x3a3a65aab0dd2a17e3f1947ba16138cd37d08c04', -- aETH
-                    '\xc0829421c1d260bd3cb3e0f06cfe2d52db2ce315'  -- BETH
+                    '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'::bytea, -- ETH
+                    '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea, -- WETH
+                    '\x5e74c9036fb86bd7ecdcb084a0673efc32ea31cb'::bytea, -- sETH
+                    '\x3a3a65aab0dd2a17e3f1947ba16138cd37d08c04'::bytea, -- aETH
+                    '\xc0829421c1d260bd3cb3e0f06cfe2d52db2ce315'::bytea  -- BETH
                 ) THEN (
                     SELECT p.price/1e18
                     FROM prices.layer1_usd p
@@ -44,8 +44,8 @@ WITH swap AS (
                     LIMIT 1
                 )
                 WHEN from_token IN (
-                    '\xeb4c2781e4eba804ce9a9803c67d0893436bb27d', -- renBTC
-                    '\x2260fac5e5542a773aa44fbcfedf7c193bc2c599'  -- WBTC
+                    '\xeb4c2781e4eba804ce9a9803c67d0893436bb27d'::bytea, -- renBTC
+                    '\x2260fac5e5542a773aa44fbcfedf7c193bc2c599'::bytea  -- WBTC
                 ) THEN (
                     SELECT p.price/1e8
                     FROM prices.layer1_usd p
@@ -54,7 +54,7 @@ WITH swap AS (
                     LIMIT 1
                 )
                 WHEN from_token IN (
-                    '\xfe18be6b3bd88a2d2a7f928d00292e7a9963cfc6'  -- sBTC
+                    '\xfe18be6b3bd88a2d2a7f928d00292e7a9963cfc6'::bytea  -- sBTC
                 ) THEN (
                     SELECT p.price/1e18
                     FROM prices.layer1_usd p
@@ -63,17 +63,17 @@ WITH swap AS (
                     LIMIT 1
                 )
                 WHEN from_token IN (
-                    '\xdac17f958d2ee523a2206206994597c13d831ec7', -- USDT (6)
-                    '\xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'  -- USDC (6)
+                    '\xdac17f958d2ee523a2206206994597c13d831ec7'::bytea, -- USDT (6)
+                    '\xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'::bytea  -- USDC (6)
                 ) THEN (1/1e6)
                 WHEN from_token IN (
-                    '\x89d24a6b4ccb1b6faa2625fe562bdd9a23260359', -- SAI
-                    '\x6b175474e89094c44da98b954eedeac495271d0f', -- DAI
-                    '\x0000000000085d4780B73119b644AE5ecd22b376', -- TUSD
-                    '\x309627af60f0926daa6041b8279484312f2bf060', -- USDB
-                    '\x8E870D67F660D95d5be530380D0eC0bd388289E1', -- PAX
-                    '\x57ab1e02fee23774580c119740129eac7081e9d3', -- sUSD 1
-                    '\x57Ab1ec28D129707052df4dF418D58a2D46d5f51'  -- sUSD 2
+                    '\x89d24a6b4ccb1b6faa2625fe562bdd9a23260359'::bytea, -- SAI
+                    '\x6b175474e89094c44da98b954eedeac495271d0f'::bytea, -- DAI
+                    '\x0000000000085d4780B73119b644AE5ecd22b376'::bytea, -- TUSD
+                    '\x309627af60f0926daa6041b8279484312f2bf060'::bytea, -- USDB
+                    '\x8E870D67F660D95d5be530380D0eC0bd388289E1'::bytea, -- PAX
+                    '\x57ab1e02fee23774580c119740129eac7081e9d3'::bytea, -- sUSD 1
+                    '\x57Ab1ec28D129707052df4dF418D58a2D46d5f51'::bytea  -- sUSD 2
                 ) THEN (1/1e18)
                 ELSE (
                     SELECT p.price
@@ -87,11 +87,11 @@ WITH swap AS (
         to_amount * (
             CASE
                 WHEN to_token IN (
-                    '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', -- ETH
-                    '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', -- WETH
-                    '\x5e74c9036fb86bd7ecdcb084a0673efc32ea31cb', -- sETH
-                    '\x3a3a65aab0dd2a17e3f1947ba16138cd37d08c04', -- aETH
-                    '\xc0829421c1d260bd3cb3e0f06cfe2d52db2ce315'  -- BETH
+                    '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'::bytea, -- ETH
+                    '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea, -- WETH
+                    '\x5e74c9036fb86bd7ecdcb084a0673efc32ea31cb'::bytea, -- sETH
+                    '\x3a3a65aab0dd2a17e3f1947ba16138cd37d08c04'::bytea, -- aETH
+                    '\xc0829421c1d260bd3cb3e0f06cfe2d52db2ce315'::bytea  -- BETH
                 ) THEN (
                     SELECT p.price/1e18
                     FROM prices.layer1_usd p
@@ -100,8 +100,8 @@ WITH swap AS (
                     LIMIT 1
                 )
                 WHEN to_token IN (
-                    '\xeb4c2781e4eba804ce9a9803c67d0893436bb27d', -- renBTC
-                    '\x2260fac5e5542a773aa44fbcfedf7c193bc2c599'  -- WBTC
+                    '\xeb4c2781e4eba804ce9a9803c67d0893436bb27d'::bytea, -- renBTC
+                    '\x2260fac5e5542a773aa44fbcfedf7c193bc2c599'::bytea  -- WBTC
                 ) THEN (
                     SELECT p.price/1e8
                     FROM prices.layer1_usd p
@@ -110,7 +110,7 @@ WITH swap AS (
                     LIMIT 1
                 )
                 WHEN to_token IN (
-                    '\xfe18be6b3bd88a2d2a7f928d00292e7a9963cfc6'  -- sBTC
+                    '\xfe18be6b3bd88a2d2a7f928d00292e7a9963cfc6'::bytea  -- sBTC
                 ) THEN (
                     SELECT p.price/1e18
                     FROM prices.layer1_usd p
@@ -119,17 +119,17 @@ WITH swap AS (
                     LIMIT 1
                 )
                 WHEN to_token IN (
-                    '\xdac17f958d2ee523a2206206994597c13d831ec7', -- USDT (6)
-                    '\xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'  -- USDC (6)
+                    '\xdac17f958d2ee523a2206206994597c13d831ec7'::bytea, -- USDT (6)
+                    '\xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'::bytea  -- USDC (6)
                 ) THEN (1/1e6)
                 WHEN to_token IN (
-                    '\x89d24a6b4ccb1b6faa2625fe562bdd9a23260359', -- SAI
-                    '\x6b175474e89094c44da98b954eedeac495271d0f', -- DAI
-                    '\x0000000000085d4780B73119b644AE5ecd22b376', -- TUSD
-                    '\x309627af60f0926daa6041b8279484312f2bf060', -- USDB
-                    '\x8E870D67F660D95d5be530380D0eC0bd388289E1', -- PAX
-                    '\x57ab1e02fee23774580c119740129eac7081e9d3', -- sUSD 1
-                    '\x57Ab1ec28D129707052df4dF418D58a2D46d5f51'  -- sUSD 2
+                    '\x89d24a6b4ccb1b6faa2625fe562bdd9a23260359'::bytea, -- SAI
+                    '\x6b175474e89094c44da98b954eedeac495271d0f'::bytea, -- DAI
+                    '\x0000000000085d4780B73119b644AE5ecd22b376'::bytea, -- TUSD
+                    '\x309627af60f0926daa6041b8279484312f2bf060'::bytea, -- USDB
+                    '\x8E870D67F660D95d5be530380D0eC0bd388289E1'::bytea, -- PAX
+                    '\x57ab1e02fee23774580c119740129eac7081e9d3'::bytea, -- sUSD 1
+                    '\x57Ab1ec28D129707052df4dF418D58a2D46d5f51'::bytea  -- sUSD 2
                 ) THEN (1/1e18)
                 ELSE (
                     SELECT p.price

@@ -21,9 +21,9 @@ WITH superrare_trades AS (
     FROM
         ethereum."logs"
     WHERE
-        contract_address = '\x2947f98c42597966a0ec25e92843c09ac17fbaa7'
+        contract_address = '\x2947f98c42597966a0ec25e92843c09ac17fbaa7'::bytea
     AND
-        topic1 = '\x5764dbcef91eb6f946584f4ea671217c686fa7e858ce4f9f42d08422b86556a9'
+        topic1 = '\x5764dbcef91eb6f946584f4ea671217c686fa7e858ce4f9f42d08422b86556a9'::bytea
 UNION ALL
     SELECT
 	'SuperRare' AS platform,
@@ -42,9 +42,9 @@ UNION ALL
     FROM
         ethereum."logs"
     WHERE
-        contract_address = '\x41a322b28d0ff354040e2cbc676f0320d8c8850d'
+        contract_address = '\x41a322b28d0ff354040e2cbc676f0320d8c8850d'::bytea
     AND
-        topic1 = '\x16dd16959a056953a63cf14bf427881e762e54f03d86b864efea8238dd3b822f'
+        topic1 = '\x16dd16959a056953a63cf14bf427881e762e54f03d86b864efea8238dd3b822f'::bytea
 UNION ALL
     SELECT
 	'SuperRare' AS platform,
@@ -63,9 +63,9 @@ UNION ALL
     FROM
         ethereum."logs"
     WHERE
-        contract_address = '\x65b49f7aee40347f5a90b714be4ef086f3fe5e2c'
+        contract_address = '\x65b49f7aee40347f5a90b714be4ef086f3fe5e2c'::bytea
     AND
-        topic1 = '\x5764dbcef91eb6f946584f4ea671217c686fa7e858ce4f9f42d08422b86556a9'
+        topic1 = '\x5764dbcef91eb6f946584f4ea671217c686fa7e858ce4f9f42d08422b86556a9'::bytea
 UNION ALL
     SELECT
 	'SuperRare' AS platform,
@@ -84,9 +84,9 @@ UNION ALL
     FROM
         ethereum."logs"
     WHERE
-        contract_address = '\x2947f98c42597966a0ec25e92843c09ac17fbaa7'
+        contract_address = '\x2947f98c42597966a0ec25e92843c09ac17fbaa7'::bytea
     AND
-        topic1 = '\x2a9d06eec42acd217a17785dbec90b8b4f01a93ecd8c127edd36bfccf239f8b6'
+        topic1 = '\x2a9d06eec42acd217a17785dbec90b8b4f01a93ecd8c127edd36bfccf239f8b6'::bytea
 UNION ALL
     SELECT
 	'SuperRare' AS platform,
@@ -105,9 +105,9 @@ UNION ALL
     FROM
         ethereum."logs"
     WHERE
-        contract_address = '\x41a322b28d0ff354040e2cbc676f0320d8c8850d'
+        contract_address = '\x41a322b28d0ff354040e2cbc676f0320d8c8850d'::bytea
     AND
-        topic1 = '\xd6deddb2e105b46d4644d24aac8c58493a0f107e7973b2fe8d8fa7931a2912be'
+        topic1 = '\xd6deddb2e105b46d4644d24aac8c58493a0f107e7973b2fe8d8fa7931a2912be'::bytea
 UNION ALL
     SELECT
 	'SuperRare' AS platform,
@@ -126,9 +126,9 @@ UNION ALL
     FROM
         ethereum."logs"
     WHERE
-        contract_address = '\x65b49f7aee40347f5a90b714be4ef086f3fe5e2c'
+        contract_address = '\x65b49f7aee40347f5a90b714be4ef086f3fe5e2c'::bytea
     AND
-        topic1 = '\x2a9d06eec42acd217a17785dbec90b8b4f01a93ecd8c127edd36bfccf239f8b6'
+        topic1 = '\x2a9d06eec42acd217a17785dbec90b8b4f01a93ecd8c127edd36bfccf239f8b6'::bytea
 UNION ALL
     SELECT
 	'SuperRare' AS platform,
@@ -143,13 +143,13 @@ UNION ALL
         block_number,
         "index" AS evt_index,
 	'Trade' as evt_type,
-        CASE WHEN topic3 = '\x0000000000000000000000000000000000000000000000000000000000000000' THEN 'Auction Retired' ELSE 'Auction Settled' END AS category
+        CASE WHEN topic3 = '\x0000000000000000000000000000000000000000000000000000000000000000'::bytea THEN 'Auction Retired' ELSE 'Auction Settled' END AS category
     FROM
         ethereum."logs"
     WHERE
-        contract_address = '\x8c9f364bf7a56ed058fc63ef81c6cf09c833e656'
+        contract_address = '\x8c9f364bf7a56ed058fc63ef81c6cf09c833e656'::bytea
     AND
-        topic1 = '\xea6d16c6bfcad11577aef5cc6728231c9f069ac78393828f8ca96847405902a9'
+        topic1 = '\xea6d16c6bfcad11577aef5cc6728231c9f069ac78393828f8ca96847405902a9'::bytea
 ), 
 -- Get ERC721 and ERC1155 transfer data for every trade transaction
 -- as well as ERC20 and custom `transfer` data for specific SuperRare contracts
@@ -166,7 +166,7 @@ FROM erc721."ERC721_evt_Transfer" erc721
 INNER JOIN superrare_trades ON superrare_trades.tx_hash = erc721.evt_tx_hash
 WHERE erc721.evt_block_time >= start_ts
 AND erc721.evt_block_time < end_ts
-AND erc721."from" <> '\x0000000000000000000000000000000000000000' -- exclude mints
+AND erc721."from" <> '\x0000000000000000000000000000000000000000'::bytea -- exclude mints
 UNION ALL
 SELECT
     erc1155.evt_tx_hash,
@@ -180,7 +180,7 @@ FROM erc1155."ERC1155_evt_TransferSingle" erc1155
 INNER JOIN superrare_trades ON superrare_trades.tx_hash = erc1155.evt_tx_hash
 WHERE erc1155.evt_block_time >= start_ts
 AND erc1155.evt_block_time < end_ts
-AND erc1155."from" <> '\x0000000000000000000000000000000000000000' -- exclude mints
+AND erc1155."from" <> '\x0000000000000000000000000000000000000000'::bytea -- exclude mints
 UNION ALL 
 SELECT
     erc20.evt_tx_hash,
@@ -194,8 +194,8 @@ FROM erc20."ERC20_evt_Transfer" erc20
 INNER JOIN superrare_trades ON superrare_trades.tx_hash = erc20.evt_tx_hash
 WHERE erc20.evt_block_time >= start_ts
 AND erc20.evt_block_time < end_ts
-AND erc20."from" <> '\x0000000000000000000000000000000000000000' -- exclude mints
-AND erc20.contract_address = '\xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb'
+AND erc20."from" <> '\x0000000000000000000000000000000000000000'::bytea -- exclude mints
+AND erc20.contract_address = '\xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb'::bytea
 UNION ALL
 SELECT
     st.evt_tx_hash,
@@ -209,8 +209,8 @@ FROM superrare."SuperRare_evt_Transfer" st
 INNER JOIN superrare_trades ON superrare_trades.tx_hash = st.evt_tx_hash
 WHERE st.evt_block_time >= '2019-01-01'
 AND st.evt_block_time < now()
-AND st."_from" <> '\x0000000000000000000000000000000000000000' -- exclude mints
-AND st.contract_address = '\x41a322b28d0ff354040e2cbc676f0320d8c8850d'
+AND st."_from" <> '\x0000000000000000000000000000000000000000'::bytea -- exclude mints
+AND st.contract_address = '\x41a322b28d0ff354040e2cbc676f0320d8c8850d'::bytea
 ),
 -- aggregate NFT transfers per transaction 
 superrare_erc_subsets AS (
@@ -309,7 +309,7 @@ rows AS (
         AND tx.block_number < end_block
     LEFT JOIN superrare_erc_subsets erc ON erc.evt_tx_hash = trades.tx_hash
     LEFT JOIN prices.usd p ON p.minute = date_trunc('minute', trades.block_time)
-        AND p.contract_address = '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+        AND p.contract_address = '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
         AND p.minute >= start_ts
         AND p.minute < end_ts
     LEFT JOIN nft.tokens tokens ON tokens.contract_address = erc.contract_address_array[1]

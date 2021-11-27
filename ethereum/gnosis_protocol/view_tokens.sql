@@ -34,7 +34,7 @@ LEFT OUTER JOIN token_names
 UNION all (
     SELECT
         0 as token_id,
-        '\x1a5f9352af8af974bfc03399e3767df6370d82e4' as token_address,
+        '\x1a5f9352af8af974bfc03399e3767df6370d82e4'::bytea as token_address,
         'OWL' as symbol,
         18 as decimals,
         '2020-01-23 20:30:00.000' as add_date

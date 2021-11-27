@@ -70,11 +70,11 @@ WITH rows AS (
             "baseAssetFilledAmount" AS token_b_amount_raw,
             NULL::numeric AS usd_amount,
             CASE
-                WHEN "addressSet"->>'quoteAsset' = '0x000000000000000000000000000000000000000e' THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+                WHEN "addressSet"->>'quoteAsset' = '0x000000000000000000000000000000000000000e' THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
                 ELSE decode(substring(("addressSet"->'quoteAsset')::TEXT, 4,40), 'hex')
             END AS token_a_address,
             CASE
-                WHEN "addressSet"->>'baseAsset' = '0x000000000000000000000000000000000000000e' THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+                WHEN "addressSet"->>'baseAsset' = '0x000000000000000000000000000000000000000e' THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
                 ELSE decode(substring(("addressSet"->'baseAsset')::TEXT, 4,40), 'hex')
             END AS token_b_address,
             contract_address AS exchange_contract_address,

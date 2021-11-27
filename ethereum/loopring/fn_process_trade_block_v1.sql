@@ -1,6 +1,6 @@
-DROP FUNCTION loopring.fn_process_trade_block_v1;
+DROP FUNCTION IF EXISTS loopring.fn_process_trade_block_v1;
 
-DROP TYPE loopring.trade_struct;
+DROP TYPE IF EXISTS loopring.trade_struct;
 
 CREATE TYPE loopring.trade_struct AS (
     block_timestamp timestamptz,

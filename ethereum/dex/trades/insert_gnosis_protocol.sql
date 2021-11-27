@@ -107,7 +107,7 @@ WITH rows AS (
         ON pa.minute = date_trunc('minute', dexs.block_time)
         AND pa.contract_address = (
             CASE 
-                WHEN dexs.token_a_address = '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+                WHEN dexs.token_a_address = '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'::bytea THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
                 ELSE dexs.token_a_address
             END)
         AND pa.minute >= start_ts
@@ -115,7 +115,7 @@ WITH rows AS (
     LEFT JOIN prices.usd pb ON pb.minute = date_trunc('minute', dexs.block_time)
         AND pb.contract_address = (
             CASE 
-                WHEN dexs.token_b_address = '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+                WHEN dexs.token_b_address = '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'::bytea THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
                 ELSE dexs.token_b_address
             END)
         AND pb.minute >= start_ts

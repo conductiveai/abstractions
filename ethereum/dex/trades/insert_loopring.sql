@@ -71,7 +71,7 @@ WITH rows AS (
                 UNION
                 SELECT "tokenId" AS "token_id", "token"
                 FROM loopring."DEXBetaV1_evt_TokenRegistered" e
-                WHERE token != '\x0000000000000000000000000000000000000000'
+                WHERE token != '\x0000000000000000000000000000000000000000'::bytea
             )
             SELECT (t.trade).block_timestamp AS block_time,
                 'Loopring' AS project,
@@ -113,7 +113,7 @@ WITH rows AS (
                 UNION
                 SELECT "tokenId" AS "token_id", "token"
                 FROM loopring."ExchangeV3_evt_TokenRegistered" e
-                WHERE token != '\x0000000000000000000000000000000000000000'
+                WHERE token != '\x0000000000000000000000000000000000000000'::bytea
             ), _account_table AS (
                 SELECT CASE (t.transaction).txType
                             WHEN 1 THEN ((t.transaction).deposit).toAccount

@@ -23,8 +23,8 @@ CREATE TABLE dex.trades (
     trade_id integer
 );
 
-CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS dex_trades_proj_tr_addr_uniq_idx ON dex.trades (project, tx_hash, trace_address, trade_id);
-CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS dex_trades_proj_evt_index_uniq_idx ON dex.trades (project, tx_hash, evt_index, trade_id);
+CREATE UNIQUE INDEX IF NOT EXISTS dex_trades_proj_tr_addr_uniq_idx ON dex.trades (project, tx_hash, trace_address, trade_id);
+CREATE UNIQUE INDEX IF NOT EXISTS dex_trades_proj_evt_index_uniq_idx ON dex.trades (project, tx_hash, evt_index, trade_id);
 CREATE INDEX IF NOT EXISTS dex_trades_tx_from_idx ON dex.trades (tx_from);
 CREATE INDEX IF NOT EXISTS dex_trades_tx_to_idx ON dex.trades (tx_to);
 CREATE INDEX IF NOT EXISTS dex_trades_project_idx ON dex.trades (project);
@@ -32,4 +32,4 @@ CREATE INDEX IF NOT EXISTS dex_trades_block_time_idx ON dex.trades USING BRIN (b
 CREATE INDEX IF NOT EXISTS dex_trades_token_a_idx ON dex.trades (token_a_address);
 CREATE INDEX IF NOT EXISTS dex_trades_token_b_idx ON dex.trades (token_b_address);
 CREATE INDEX IF NOT EXISTS dex_trades_block_time_project_idx ON dex.trades (block_time, project);
-CREATE INDEX CONCURRENTLY IF NOT EXISTS dex_trades_usd_amount_idx ON dex.trades (usd_amount);
+CREATE INDEX IF NOT EXISTS dex_trades_usd_amount_idx ON dex.trades (usd_amount);

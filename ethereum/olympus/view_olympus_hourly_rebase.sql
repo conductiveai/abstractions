@@ -16,15 +16,15 @@ staking_address AS
     evt_block_time as date,
     e.value as staked_amount
     FROM erc20."ERC20_evt_Transfer" e
-    WHERE "contract_address" = '\x383518188c0c6d7730d91b2c03a03c837814a899' -- OHM contract address
-    and e."from" = '\xFd31c7d00Ca47653c6Ce64Af53c1571f9C36566a'
+    WHERE "contract_address" = '\x383518188c0c6d7730d91b2c03a03c837814a899'::bytea -- OHM contract address
+    and e."from" = '\xFd31c7d00Ca47653c6Ce64Af53c1571f9C36566a'::bytea
 UNION ALL
     SELECT
     evt_block_time as date,
     -e.value as staked_amount
     FROM erc20."ERC20_evt_Transfer" e
-    WHERE "contract_address" = '\x383518188c0c6d7730d91b2c03a03c837814a899' -- OHM contract address
-    and e."to" = '\xFd31c7d00Ca47653c6Ce64Af53c1571f9C36566a'
+    WHERE "contract_address" = '\x383518188c0c6d7730d91b2c03a03c837814a899'::bytea -- OHM contract address
+    and e."to" = '\xFd31c7d00Ca47653c6Ce64Af53c1571f9C36566a'::bytea
 ),
 
 final_staked as
@@ -39,8 +39,8 @@ final_staked as
 staking_tx as (
     select evt_block_time, value/1e9 as ohm_transferred, evt_tx_hash
     from erc20."ERC20_evt_Transfer" e
-    where e."from" = '\x383518188c0c6d7730d91b2c03a03c837814a899'
-    and e."to"  = '\xFd31c7d00Ca47653c6Ce64Af53c1571f9C36566a' and value != 0
+    where e."from" = '\x383518188c0c6d7730d91b2c03a03c837814a899'::bytea
+    and e."to"  = '\xFd31c7d00Ca47653c6Ce64Af53c1571f9C36566a'::bytea and value != 0
 ),
 
 rebase as (

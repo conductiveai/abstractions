@@ -100,8 +100,8 @@ WITH rows AS (
             uniswap_v2."Pair_evt_Swap" t
         INNER JOIN uniswap_v2."Factory_evt_PairCreated" f ON f.pair = t.contract_address
         WHERE t.contract_address NOT IN (
-            '\xed9c854cb02de75ce4c9bba992828d6cb7fd5c71', -- remove WETH-UBOMB wash trading pair
-            '\x854373387e41371ac6e307a1f29603c6fa10d872' ) -- remove FEG/ETH token pair
+            '\xed9c854cb02de75ce4c9bba992828d6cb7fd5c71'::bytea, -- remove WETH-UBOMB wash trading pair
+            '\x854373387e41371ac6e307a1f29603c6fa10d872'::bytea) -- remove FEG/ETH token pair
 
 
     ) dexs
@@ -121,8 +121,8 @@ WITH rows AS (
         AND pb.contract_address = dexs.token_b_address
         AND pb.minute >= start_ts
         AND pb.minute < end_ts
-    WHERE ( tx."to" = '\xfcadf926669e7cad0e50287ea7d563020289ed2c' -- mistX Router for Sushi Contract address
-    or tx."to" = '\xa58f22e0766b3764376c92915ba545d583c19dbc') -- mistX Router for Uniswap Contract address
+    WHERE ( tx."to" = '\xfcadf926669e7cad0e50287ea7d563020289ed2c'::bytea -- mistX Router for Sushi Contract address
+    or tx."to" = '\xa58f22e0766b3764376c92915ba545d583c19dbc'::bytea) -- mistX Router for Uniswap Contract address
     AND dexs.block_time >= start_ts
     AND dexs.block_time < end_ts
     ON CONFLICT DO NOTHING

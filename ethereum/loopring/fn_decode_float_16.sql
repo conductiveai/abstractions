@@ -1,4 +1,4 @@
-DROP FUNCTION loopring.fn_decode_float_16;
+DROP FUNCTION IF EXISTS loopring.fn_decode_float_16;
 
 CREATE OR REPLACE FUNCTION loopring.fn_decode_float_16(data bytea) RETURNS double precision AS $$
 DECLARE

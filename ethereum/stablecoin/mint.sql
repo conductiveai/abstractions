@@ -1,4 +1,4 @@
-CREATE TABLE stablecoin.mint (
+CREATE TABLE IF NOT EXISTS stablecoin.mint (
     minter bytea,
     amount numeric,
     symbol text,
@@ -41,7 +41,7 @@ WITH mint AS (
                evt_index,
                NULL::integer[] as trace_address
         FROM erc20."ERC20_evt_Transfer" evt
-        WHERE "from" = '\x0000000000000000000000000000000000000000'
+        WHERE "from" = '\x0000000000000000000000000000000000000000'::bytea
        
         UNION ALL
   
@@ -55,8 +55,8 @@ WITH mint AS (
                evt_index,
                NULL::integer[]
         FROM erc20."ERC20_evt_Transfer" 
-        WHERE contract_address = '\xdac17f958d2ee523a2206206994597c13d831ec7' 
-        AND "from" = '\xc6cde7c39eb2f0f0095f41570af89efc2c1ea828'  -- USDT
+        WHERE contract_address = '\xdac17f958d2ee523a2206206994597c13d831ec7'::bytea
+        AND "from" = '\xc6cde7c39eb2f0f0095f41570af89efc2c1ea828'::bytea  -- USDT
 
         UNION ALL
 
@@ -65,13 +65,13 @@ WITH mint AS (
                call_tx_hash,
                "src",
                "dst", -- from
-               '\x6b175474e89094c44da98b954eedeac495271d0f', -- DAI
+               '\x6b175474e89094c44da98b954eedeac495271d0f'::bytea, -- DAI
                "rad" / 1e27,
                NULL::integer,
                call_trace_address
         FROM makermcd."VAT_call_move" maker
         WHERE call_success = 'true'
-        AND dst = '\x197e90f9fad81970ba7976f33cbd77088e5d7cf7'
+        AND dst = '\x197e90f9fad81970ba7976f33cbd77088e5d7cf7'::bytea
     ) mints
     INNER JOIN erc20.stablecoins st 
         ON st.contract_address = mints.contract_address

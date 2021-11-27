@@ -13,12 +13,12 @@ SELECT
     'erc20' AS erc_type,
     CAST("punkIndex" AS text) AS "tokenId",
     "fromAddress" AS "from",
-    -- When the seller accepts a bid, the `PunkBought` event emits '\x0000000000000000000000000000000000000000' as `toAddress`
+    -- When the seller accepts a bid, the `PunkBought` event emits '\x0000000000000000000000000000000000000000'::bytea as `toAddress`
     -- Get the buyer from `erc20."ERC20_evt_Transfer"`
-    CASE WHEN "toAddress" = '\x0000000000000000000000000000000000000000'
+    CASE WHEN "toAddress" = '\x0000000000000000000000000000000000000000'::bytea
          THEN (SELECT "to"
                FROM erc20."ERC20_evt_Transfer" e
-               WHERE e."evt_tx_hash" = p."evt_tx_hash" AND e."from" = p."fromAddress" ANd e.contract_address = '\xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb')
+               WHERE e."evt_tx_hash" = p."evt_tx_hash" AND e."from" = p."fromAddress" ANd e.contract_address = '\xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb'::bytea)
          ELSE "toAddress"
          END AS "to",
     "contract_address",
@@ -33,7 +33,7 @@ SELECT
              AND b."fromAddress" = (
                 SELECT "to"
                 FROM erc20."ERC20_evt_Transfer" e
-                WHERE e."evt_tx_hash" = p."evt_tx_hash" AND e."from" = p."fromAddress" AND e.contract_address = '\xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb'
+                WHERE e."evt_tx_hash" = p."evt_tx_hash" AND e."from" = p."fromAddress" AND e.contract_address = '\xb47e3cd837ddf8e4c57f05d70ab865de6e193bbb'::bytea
                 ORDER BY evt_block_time DESC
                 LIMIT 1
          )
@@ -155,7 +155,7 @@ rows AS (
         AND tx.block_number >= start_block
         AND tx.block_number < end_block
     LEFT JOIN prices.usd p ON p.minute = date_trunc('minute', trades.evt_block_time)
-        AND p.contract_address = '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+        AND p.contract_address = '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
         AND p.minute >= start_ts
         AND p.minute < end_ts
     WHERE trades.evt_block_time >= start_ts

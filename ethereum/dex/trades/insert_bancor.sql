@@ -66,11 +66,11 @@ WITH rows AS (
             target_token_amount_raw AS token_a_amount_raw,
             source_token_amount_raw AS token_b_amount_raw,
             NULL::numeric AS usd_amount,
-            CASE WHEN target_token_address = '\xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE' THEN
+            CASE WHEN target_token_address = '\xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'::bytea THEN
                 '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
             ELSE target_token_address
             END AS token_a_address,
-            CASE WHEN source_token_address = '\xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE' THEN
+            CASE WHEN source_token_address = '\xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'::bytea THEN
                 '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
             ELSE source_token_address
             END AS token_b_address,

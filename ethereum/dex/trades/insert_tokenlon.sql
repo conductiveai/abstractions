@@ -111,12 +111,12 @@ WITH rows AS (
             "makerAssetAmount" AS token_b_amount_raw,
             NULL::numeric AS usd_amount,
             CASE
-                WHEN "takerAssetAddr" IN ('\x0000000000000000000000000000000000000000')
+                WHEN "takerAssetAddr" IN ('\x0000000000000000000000000000000000000000'::bytea)
                 THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::BYTEA
                 ELSE "takerAssetAddr"
             END AS token_a_address,
             CASE
-                WHEN "makerAssetAddr" IN ('\x0000000000000000000000000000000000000000')
+                WHEN "makerAssetAddr" IN ('\x0000000000000000000000000000000000000000'::bytea)
                 THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::BYTEA
                 ELSE "makerAssetAddr"
             END AS token_b_address,
@@ -140,12 +140,12 @@ WITH rows AS (
             "makerAssetAmount" AS token_b_amount_raw,
             NULL::numeric AS usd_amount,
             CASE
-                WHEN "takerAssetAddr" IN ('\x0000000000000000000000000000000000000000')
+                WHEN "takerAssetAddr" IN ('\x0000000000000000000000000000000000000000'::bytea)
                 THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::BYTEA
                 ELSE "takerAssetAddr"
             END AS token_a_address,
             CASE
-                WHEN "makerAssetAddr" IN ('\x0000000000000000000000000000000000000000')
+                WHEN "makerAssetAddr" IN ('\x0000000000000000000000000000000000000000'::bytea)
                 THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::BYTEA
                 ELSE "makerAssetAddr"
             END AS token_b_address,
@@ -169,12 +169,12 @@ WITH rows AS (
             (t.order::jsonb -> 'makerAssetAmount')::numeric token_b_amount_raw,
             NULL::numeric AS usd_amount,
             CASE
-                WHEN REPLACE(t.order::jsonb ->> 'takerAssetAddr', '0x', '\x')::BYTEA = '\x0000000000000000000000000000000000000000'
+                WHEN REPLACE(t.order::jsonb ->> 'takerAssetAddr', '0x', '\x')::BYTEA = '\x0000000000000000000000000000000000000000'::bytea
                 THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::BYTEA
                 ELSE REPLACE(t.order::jsonb ->> 'takerAssetAddr', '0x', '\x')::BYTEA
             END AS token_a_address,
             CASE
-                WHEN REPLACE(t.order::jsonb ->> 'makerAssetAddr', '0x', '\x')::BYTEA = '\x0000000000000000000000000000000000000000'
+                WHEN REPLACE(t.order::jsonb ->> 'makerAssetAddr', '0x', '\x')::BYTEA = '\x0000000000000000000000000000000000000000'::bytea
                 THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::BYTEA
                 ELSE REPLACE(t.order::jsonb ->> 'makerAssetAddr', '0x', '\x')::BYTEA
             END AS token_b_address,

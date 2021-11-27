@@ -76,7 +76,7 @@ WITH rows AS (
         FROM
             dodo."DODO_evt_SellBaseToken" s
         LEFT JOIN dodo."view_markets" m on s.contract_address = m.market_contract_address
-        WHERE s.seller <> '\xa356867fdcea8e71aeaf87805808803806231fdc'
+        WHERE s.seller <> '\xa356867fdcea8e71aeaf87805808803806231fdc'::bytea
 
         UNION ALL
 
@@ -100,7 +100,7 @@ WITH rows AS (
         FROM
             dodo."DODO_evt_BuyBaseToken" b
         LEFT JOIN dodo."view_markets" m on b.contract_address = m.market_contract_address
-        WHERE b.buyer <> '\xa356867fdcea8e71aeaf87805808803806231fdc'
+        WHERE b.buyer <> '\xa356867fdcea8e71aeaf87805808803806231fdc'::bytea
 
         UNION ALL
 
@@ -189,7 +189,7 @@ WITH rows AS (
             evt_index
         FROM
             dodo."DVM_evt_DODOSwap"
-        WHERE trader <> '\xa356867fdcea8e71aeaf87805808803806231fdc'
+        WHERE trader <> '\xa356867fdcea8e71aeaf87805808803806231fdc'::bytea
 
         UNION ALL
 
@@ -212,7 +212,7 @@ WITH rows AS (
             evt_index
         FROM
             dodo."DPP_evt_DODOSwap"
-        WHERE trader <> '\xa356867fdcea8e71aeaf87805808803806231fdc'
+        WHERE trader <> '\xa356867fdcea8e71aeaf87805808803806231fdc'::bytea
 
         UNION ALL
 
@@ -235,7 +235,7 @@ WITH rows AS (
             evt_index
         FROM
             dodo."DSP_evt_DODOSwap"
-        WHERE trader <> '\xa356867fdcea8e71aeaf87805808803806231fdc'
+        WHERE trader <> '\xa356867fdcea8e71aeaf87805808803806231fdc'::bytea
     ) dexs
     INNER JOIN ethereum.transactions tx
         ON dexs.tx_hash = tx.hash

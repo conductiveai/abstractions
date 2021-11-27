@@ -1,4 +1,4 @@
-CREATE TABLE synthetix.trades (
+CREATE TABLE IF NOT EXISTS synthetix.trades (
     block_time timestamptz NOT NULL,
     token_a_amount numeric,
     token_b_amount numeric,

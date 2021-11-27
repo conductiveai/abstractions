@@ -91,9 +91,9 @@ WITH rows AS (
             evt_block_time AS block_time,
             'dYdX' AS project,
             CASE
-                WHEN contract_address = '\x1c50c582c7066049C560Bca20416b1d9E0dfb003' THEN 'PLINK-USDC Perpetual'
-                WHEN contract_address = '\x07aBe965500A49370D331eCD613c7AC47dD6e547' THEN 'PBTC-USDC Perpetual'
-                WHEN contract_address = '\x09403FD14510F8196F7879eF514827CD76960B5d' THEN 'WETH-PUSD Perpetual'
+                WHEN contract_address = '\x1c50c582c7066049C560Bca20416b1d9E0dfb003'::bytea THEN 'PLINK-USDC Perpetual'
+                WHEN contract_address = '\x07aBe965500A49370D331eCD613c7AC47dD6e547'::bytea THEN 'PBTC-USDC Perpetual'
+                WHEN contract_address = '\x09403FD14510F8196F7879eF514827CD76960B5d'::bytea THEN 'WETH-PUSD Perpetual'
             END AS version,
             'DEX' AS category,
             maker AS trader_a,
@@ -101,18 +101,18 @@ WITH rows AS (
             "positionAmount" AS token_a_amount_raw,
             "marginAmount" AS token_b_amount_raw,
             CASE
-                WHEN contract_address = '\x09403FD14510F8196F7879eF514827CD76960B5d' THEN "positionAmount"/1e6
+                WHEN contract_address = '\x09403FD14510F8196F7879eF514827CD76960B5d'::bytea THEN "positionAmount"/1e6
                 ELSE NULL::numeric
             END AS usd_amount,
             CASE
-                WHEN contract_address = '\x1c50c582c7066049C560Bca20416b1d9E0dfb003' THEN '\x514910771af9ca656af840dff83e8264ecf986ca'::bytea
-                WHEN contract_address = '\x07aBe965500A49370D331eCD613c7AC47dD6e547' THEN '\x2260fac5e5542a773aa44fbcfedf7c193bc2c599'::bytea
-                WHEN contract_address = '\x09403FD14510F8196F7879eF514827CD76960B5d' THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
+                WHEN contract_address = '\x1c50c582c7066049C560Bca20416b1d9E0dfb003'::bytea THEN '\x514910771af9ca656af840dff83e8264ecf986ca'::bytea
+                WHEN contract_address = '\x07aBe965500A49370D331eCD613c7AC47dD6e547'::bytea THEN '\x2260fac5e5542a773aa44fbcfedf7c193bc2c599'::bytea
+                WHEN contract_address = '\x09403FD14510F8196F7879eF514827CD76960B5d'::bytea THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea
             END AS token_a_address,
             CASE
-                WHEN contract_address = '\x1c50c582c7066049C560Bca20416b1d9E0dfb003' THEN '\xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'::bytea
-                WHEN contract_address = '\x07aBe965500A49370D331eCD613c7AC47dD6e547' THEN '\xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'::bytea
-                WHEN contract_address = '\x09403FD14510F8196F7879eF514827CD76960B5d' THEN NULL::bytea
+                WHEN contract_address = '\x1c50c582c7066049C560Bca20416b1d9E0dfb003'::bytea THEN '\xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'::bytea
+                WHEN contract_address = '\x07aBe965500A49370D331eCD613c7AC47dD6e547'::bytea THEN '\xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'::bytea
+                WHEN contract_address = '\x09403FD14510F8196F7879eF514827CD76960B5d'::bytea THEN NULL::bytea
             END AS token_b_address,
             contract_address AS exchange_contract_address,
             evt_tx_hash AS tx_hash,

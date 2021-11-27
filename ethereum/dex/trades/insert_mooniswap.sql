@@ -66,10 +66,10 @@ WITH rows AS (
             result AS token_a_amount_raw,
             amount AS token_b_amount_raw,
             NULL::numeric AS usd_amount,
-            CASE WHEN dst = '\x0000000000000000000000000000000000000000' THEN
+            CASE WHEN dst = '\x0000000000000000000000000000000000000000'::bytea THEN
                 '\xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'::bytea ELSE dst
             END AS token_a_address,
-            CASE WHEN src = '\x0000000000000000000000000000000000000000' THEN
+            CASE WHEN src = '\x0000000000000000000000000000000000000000'::bytea THEN
                 '\xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'::bytea ELSE src
             END AS token_b_address,
             contract_address AS exchange_contract_address,

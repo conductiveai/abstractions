@@ -67,10 +67,10 @@ WITH rows AS (
             token_b_amount_raw,
             NULL::numeric AS usd_amount,
             -- Cast ETH as WETH for price purposes
-            CASE WHEN token_a_address = '\x0000000000000000000000000000000000000000' THEN
+            CASE WHEN token_a_address = '\x0000000000000000000000000000000000000000'::bytea THEN
                 '\xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'::bytea ELSE token_a_address
             END AS token_a_address,
-            CASE WHEN token_b_address = '\x0000000000000000000000000000000000000000' THEN
+            CASE WHEN token_b_address = '\x0000000000000000000000000000000000000000'::bytea THEN
                 '\xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE'::bytea ELSE token_b_address
             END AS token_b_address,
             exchange_contract_address,

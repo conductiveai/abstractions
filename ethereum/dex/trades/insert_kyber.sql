@@ -64,20 +64,20 @@ WITH rows AS (
             trader AS trader_a,
             NULL::bytea AS trader_b,
             CASE
-                WHEN src IN ('\x5228a22e72ccc52d415ecfd199f99d0665e7733b') THEN 0 -- ignore volume of token PT
+                WHEN src IN ('\x5228a22e72ccc52d415ecfd199f99d0665e7733b'::bytea) THEN 0 -- ignore volume of token PT
                 ELSE "srcAmount"
             END AS token_a_amount_raw,
             "ethWeiValue" AS token_b_amount_raw,
             NULL::numeric AS usd_amount,
             src AS token_a_address,
-            '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2' AS token_b_address,
+            '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea AS token_b_address,
             contract_address exchange_contract_address,
             evt_tx_hash AS tx_hash,
             NULL::integer[] AS trace_address,
             evt_index AS evt_index
         FROM
             kyber."Network_evt_KyberTrade"
-        WHERE src NOT IN ('\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee','\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2')
+        WHERE src NOT IN ('\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'::bytea,'\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea)
 
         UNION ALL
 
@@ -92,11 +92,11 @@ WITH rows AS (
             NULL::bytea AS trader_b,
             "ethWeiValue" AS token_a_amount_raw,
             CASE
-                WHEN dest IN ('\x5228a22e72ccc52d415ecfd199f99d0665e7733b') THEN 0 -- ignore volume of token PT
+                WHEN dest IN ('\x5228a22e72ccc52d415ecfd199f99d0665e7733b'::bytea) THEN 0 -- ignore volume of token PT
                 ELSE "dstAmount"
             END AS token_b_amount_raw,
             NULL::numeric AS usd_amount,
-            '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2' AS token_a_address,
+            '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea AS token_a_address,
             dest AS token_b_address,
             contract_address exchange_contract_address,
             evt_tx_hash AS tx_hash,
@@ -104,7 +104,7 @@ WITH rows AS (
             evt_index AS evt_index
         FROM
             kyber."Network_evt_KyberTrade"
-        WHERE dest NOT IN ('\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee','\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2')
+        WHERE dest NOT IN ('\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'::bytea,'\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea)
 
         UNION ALL
 
@@ -129,7 +129,7 @@ WITH rows AS (
             ) AS token_a_amount_raw,
             (SELECT SUM(a) FROM UNNEST("t2eSrcAmounts") AS a) AS token_b_amount_raw,
             NULL::numeric AS usd_amount,
-            '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2' AS token_a_address, -- trade from token - eth, dest should be weth
+            '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea AS token_a_address, -- trade from token - eth, dest should be weth
             src AS token_b_address,
             trade.contract_address AS exchange_contract_address,
             evt_tx_hash AS tx_hash,
@@ -137,7 +137,7 @@ WITH rows AS (
             evt_index AS evt_index
         FROM kyber_v2."Network_evt_KyberTrade" trade
         INNER JOIN erc20."tokens" src_token ON trade.src = src_token.contract_address
-        AND src_token.contract_address != '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+        AND src_token.contract_address != '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'::bytea
 
         UNION ALL
 
@@ -162,14 +162,14 @@ WITH rows AS (
             (SELECT SUM(a) FROM UNNEST("e2tSrcAmounts") AS a) AS token_b_amount_raw,
             NULL::numeric AS usd_amount,
             dest AS token_a_address,
-            '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2' AS token_b_address, -- trade from eth - token, src should be weth
+            '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea AS token_b_address, -- trade from eth - token, src should be weth
             trade.contract_address AS exchange_contract_address,
             evt_tx_hash AS tx_hash,
             NULL::integer[] AS trace_address,
             evt_index AS evt_index
         FROM kyber_v2."Network_evt_KyberTrade" trade
         INNER JOIN erc20."tokens" dst_token ON trade.dest = dst_token.contract_address
-        AND dst_token.contract_address != '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+        AND dst_token.contract_address != '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'::bytea
     ) dexs
     INNER JOIN ethereum.transactions tx
         ON dexs.tx_hash = tx.hash

@@ -86,7 +86,7 @@ CREATE MATERIALIZED VIEW balancer_v1.view_liquidity AS (
             LEFT JOIN dex_prices p2 ON p2.day <= b.day
             AND b.day < p2.day_of_next_change
             AND p2.token = b.token
-            WHERE pool != '\xBA12222222228d8Ba445958a75a0704d566BF2C8'
+            WHERE pool != '\xBA12222222228d8Ba445958a75a0704d566BF2C8'::bytea
     ),
     pools_tokens_weights AS (
         SELECT

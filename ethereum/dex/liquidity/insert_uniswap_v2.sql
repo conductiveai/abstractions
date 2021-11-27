@@ -84,8 +84,8 @@ rows AS (
         FROM balances
         INNER JOIN days d ON balances.day <= d.day AND d.day < balances.next_day
         WHERE balances.wallet_address NOT IN (
-            '\xed9c854cb02de75ce4c9bba992828d6cb7fd5c71', -- remove WETH-UBOMB wash trading pair
-            '\x854373387e41371ac6e307a1f29603c6fa10d872' ) -- remove FEG/ETH token pair
+            '\xed9c854cb02de75ce4c9bba992828d6cb7fd5c71'::bytea, -- remove WETH-UBOMB wash trading pair
+            '\x854373387e41371ac6e307a1f29603c6fa10d872'::bytea) -- remove FEG/ETH token pair
     ) dexs
     LEFT JOIN erc20.tokens erc20 on erc20.contract_address = dexs.token_address
     LEFT JOIN prices.usd p on p.contract_address = dexs.token_address and p.minute = dexs.day

@@ -24,8 +24,8 @@ CREATE TABLE balancer.view_trades (
     trade_id integer
 );
 
-CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS balancer_trades_proj_tr_addr_uniq_idx ON balancer.view_trades (project, tx_hash, trace_address, trade_id);
-CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS balancer_trades_proj_evt_index_uniq_idx ON balancer.view_trades (project, tx_hash, evt_index, trade_id);
+CREATE UNIQUE INDEX IF NOT EXISTS balancer_trades_proj_tr_addr_uniq_idx ON balancer.view_trades (project, tx_hash, trace_address, trade_id);
+CREATE UNIQUE INDEX IF NOT EXISTS balancer_trades_proj_evt_index_uniq_idx ON balancer.view_trades (project, tx_hash, evt_index, trade_id);
 CREATE INDEX IF NOT EXISTS balancer_trades_tx_from_idx ON balancer.view_trades (tx_from);
 CREATE INDEX IF NOT EXISTS balancer_trades_tx_to_idx ON balancer.view_trades (tx_to);
 CREATE INDEX IF NOT EXISTS balancer_trades_project_idx ON balancer.view_trades (project);
