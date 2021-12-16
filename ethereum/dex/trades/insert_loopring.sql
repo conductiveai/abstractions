@@ -98,7 +98,7 @@ WITH rows AS (
             WITH transactions AS (
                 SELECT loopring.fn_process_block_v2(
                     CAST(t.block ->> 'blockSize' AS INT),
-                    decode(substring(t.block ->> 'data', 3, char_length(t.block ->> 'data') - 2), 'hex'),
+                    decode(t.block->>'data', 'base64'),
                     c.call_block_time,
                     blockIdx::integer
                 ) as transaction,
