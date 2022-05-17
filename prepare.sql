@@ -1,4 +1,65 @@
-CREATE OR REPLACE FUNCTION TO_TEXT(bytes BYTEA)
+CREATE OR REPLACE FUNCTION labels.GET(address_ BYTEA, type_ TEXT)
+RETURNS TEXT[]
+STRICT IMMUTABLE LANGUAGE plpgsql AS
+$$
+DECLARE
+  names TEXT[];
+BEGIN
+  SELECT ARRAY_AGG("name") INTO names
+  FROM labels.labels
+  WHERE address = address_ AND "type" = type_;
+  RETURN names;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION TO_INTS(txt TEXT)
+RETURNS INTEGER[]
+STRICT IMMUTABLE LANGUAGE plpgsql AS
+$$
+BEGIN
+  IF LEFT(txt, 1) = '{' THEN
+      RETURN txt::INTEGER[];
+	ELSE
+      RETURN STRING_TO_ARRAY(txt, ',')::INTEGER[];
+	END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.MAX_BLOCK_NUMBER_LT(block_timestamp TIMESTAMPTZ)
+RETURNS BIGINT
+STRICT IMMUTABLE LANGUAGE plpgsql AS
+$$
+DECLARE
+  block_number BIGINT := 0;
+  ts TIMESTAMP := block_timestamp;
+BEGIN
+  SELECT "number" INTO block_number
+  FROM public.blocks
+  WHERE "timestamp" < ts
+  ORDER BY "timestamp" DESC
+  LIMIT 1;
+  RETURN block_number;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.MAX_BLOCK_NUMBER_LE(block_timestamp TIMESTAMPTZ)
+RETURNS BIGINT
+STRICT IMMUTABLE LANGUAGE plpgsql AS
+$$
+DECLARE
+  block_number BIGINT := 0;
+  ts TIMESTAMP := block_timestamp;
+BEGIN
+  SELECT "number" INTO block_number
+  FROM public.blocks
+  WHERE "timestamp" <= ts
+  ORDER BY "timestamp" DESC
+  LIMIT 1;
+  RETURN block_number;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.TO_TEXT(bytes BYTEA)
 RETURNS TEXT
 STRICT IMMUTABLE LANGUAGE plpgsql AS
 $$
@@ -7,7 +68,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION TO_BYTEA(txt TEXT)
+CREATE OR REPLACE FUNCTION public.TO_BYTEA(txt TEXT)
 RETURNS BYTEA
 STRICT IMMUTABLE LANGUAGE plpgsql AS
 $$
@@ -17,24 +78,24 @@ END;
 $$;
 
 DO $$ BEGIN
-    CREATE CAST (BYTEA AS TEXT) WITH FUNCTION TO_TEXT(BYTEA) AS IMPLICIT;
+    CREATE CAST (BYTEA AS TEXT) WITH FUNCTION public.TO_TEXT(BYTEA) AS IMPLICIT;
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
 DO $$ BEGIN
-    CREATE CAST (BYTEA AS VARCHAR) WITH FUNCTION TO_TEXT(BYTEA) AS IMPLICIT;
+    CREATE CAST (BYTEA AS VARCHAR) WITH FUNCTION public.TO_TEXT(BYTEA) AS IMPLICIT;
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
 DO $$ BEGIN
-    CREATE CAST (TEXT AS BYTEA) WITH FUNCTION TO_BYTEA(TEXT) AS IMPLICIT;
+    CREATE CAST (TEXT AS BYTEA) WITH FUNCTION public.TO_BYTEA(TEXT) AS IMPLICIT;
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 DO $$ BEGIN
-    CREATE CAST (VARCHAR AS BYTEA) WITH FUNCTION TO_BYTEA(TEXT) AS IMPLICIT;
+    CREATE CAST (VARCHAR AS BYTEA) WITH FUNCTION public.TO_BYTEA(TEXT) AS IMPLICIT;
 EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
@@ -51,7 +112,7 @@ CREATE OR REPLACE VIEW ethereum.logs AS
   SELECT log_index AS "index", transaction_hash AS tx_hash, address AS contract_address, DECODE(SUBSTRING(topic0, 3), 'hex')::BYTEA AS topic1, DECODE(SUBSTRING(topic1, 3), 'hex')::BYTEA AS topic2, DECODE(SUBSTRING(topic2, 3), 'hex')::BYTEA AS topic3, DECODE(SUBSTRING(topic3, 3), 'hex')::BYTEA AS topic4, DECODE(SUBSTRING("data", 3), 'hex')::BYTEA AS "data", block_timestamp AS block_time, block_number FROM public.logs;
 
 CREATE OR REPLACE VIEW ethereum.traces AS
-  SELECT transaction_hash AS tx_hash, block_number, block_timestamp AS block_time, from_address AS "from", to_address AS "to", DECODE(SUBSTRING("input", 3), 'hex')::BYTEA AS "input", STRING_TO_ARRAY(trace_address, ',')::INTEGER[] AS trace_address, call_type, trace_type AS "type", status::BOOL AS success, subtraces::INTEGER AS sub_traces FROM public.traces;
+  SELECT transaction_hash AS tx_hash, block_number, block_timestamp AS block_time, from_address AS "from", to_address AS "to", value, DECODE(SUBSTRING(input, 3), 'hex') AS input, TO_INTS(trace_address::text) AS trace_address, call_type, trace_type AS type, status::BOOLEAN AS success, gas_used, subtraces::INTEGER AS sub_traces FROM public.traces;
 
 CREATE OR REPLACE FUNCTION public.numeric2bytea_old(a numeric)
   RETURNS bytea
@@ -88,6 +149,18 @@ CREATE SCHEMA IF NOT EXISTS "nft";
 CREATE SCHEMA IF NOT EXISTS "dex";
 CREATE SCHEMA IF NOT EXISTS "setprotocol_v2";
 CREATE SCHEMA IF NOT EXISTS "rari_capital";
+CREATE SCHEMA IF NOT EXISTS "uniswap_merkle";
+CREATE SCHEMA IF NOT EXISTS "index";
+CREATE SCHEMA IF NOT EXISTS "indexed_finance";
+CREATE SCHEMA IF NOT EXISTS "integral_size";
+CREATE SCHEMA IF NOT EXISTS "balancer_v1";
+CREATE SCHEMA IF NOT EXISTS "token_balances";
+CREATE SCHEMA IF NOT EXISTS "erasure_bay";
+CREATE SCHEMA IF NOT EXISTS "stablecoin";
+CREATE SCHEMA IF NOT EXISTS "erasure_quant";
+CREATE SCHEMA IF NOT EXISTS "uniswap_v1";
+CREATE SCHEMA IF NOT EXISTS "lending";
+CREATE SCHEMA IF NOT EXISTS "erasure_numerai";
 
 CREATE UNIQUE INDEX IF NOT EXISTS uniqe_job ON cron.job USING btree (command);
 CREATE UNIQUE INDEX IF NOT EXISTS unique_command ON cron.job USING btree (command);

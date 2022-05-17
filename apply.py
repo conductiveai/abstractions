@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 
-import getopt
+import argparse
 import glob
 import hashlib
 import os.path
-import sys
+import re
 import shutil
 from pathlib import Path
+from pathlib import PureWindowsPath
 from subprocess import Popen, PIPE, call
 from typing import Dict, Optional, List
 
 
 class File(object):
-    def __init__(self, name, hash, split):
+    def __init__(self, name, hash, split, skip):
         self.name = name
         self.hash = hash
         self.split = split
+        self.skip = skip
 
 
 def get_env(path: Optional[str] = None) -> Dict[str, str]:
@@ -43,9 +45,14 @@ def load_file_list(filename: str) -> Dict[str, File]:
     if os.path.isfile('scripts.csv'):
         with open(filename, 'r') as f:
             for line in f.readlines():
+                line = line.strip()
+                skip = False
+                if line.startswith("#"):
+                    skip = True
+                    line = line.lstrip("# ")
                 items = line.split(',')
-                name = items[0]
-                files[name] = File(name, items[1], int(items[2]))
+                name = items[0].strip()
+                files[name] = File(name, items[1].strip(), int(items[2].strip()), skip)
     return files
 
 
@@ -79,9 +86,10 @@ def init_file_list(pathname: str) -> Dict[str, File]:
     files = dict()
     insert = dict()
     for name in glob.glob(pathname, recursive=True):
+        name = PureWindowsPath(name).as_posix()
         if name.endswith('_backfill.sql'):
             continue
-        file = File(name, sha256(name), 0)
+        file = File(name, sha256(name), 0, False)
         if Path(name).name.startswith("insert"):
             insert[name] = file
         else:
@@ -98,15 +106,18 @@ def check_file_list(pathname: str, files: Dict[str, File]) -> (List[File], List[
         if not os.path.isfile(file.name):
             removed_files.append(file)
     for name in glob.glob(pathname, recursive=True):
+        name = PureWindowsPath(name).as_posix()
         if name.endswith('_backfill.sql'):
             continue
         file = files.get(name, None)
+        if file.skip:
+            continue
         if not file:
-            new_files.append(File(name, sha256(name), 0))
+            new_files.append(File(name, sha256(name), 0, False))
         else:
             hash = sha256(name)
             if hash != file.hash:
-                modified_files.append(File(name, hash, 0))
+                modified_files.append(File(name, hash, 0, False))
     return new_files, modified_files, removed_files
 
 
@@ -117,6 +128,13 @@ def apply_patch(filename: str) -> int:
         return 0
 
 
+def revert_patch(path: str) -> int:
+    rc = call(['git', 'checkout', '-f', path])
+    if rc == 0:
+        rc = call(['git', 'clean', '-fd', path])
+    return rc
+
+
 def prepare(filename: str, env: Dict[str, str]) -> int:
     if os.path.isfile(filename):
         return call(['psql', '-v', 'ON_ERROR_STOP=1', '-f', filename], env=env)
@@ -124,13 +142,44 @@ def prepare(filename: str, env: Dict[str, str]) -> int:
         return 0
 
 
+def max_block_number(match) -> str:
+    arg = match.group(3)
+    if arg is None:
+        arg = "(" + match.group(2) + ")"
+    return "SELECT max_block_number_" + ("le" if match.group(1) == "<=" else "lt") + arg
+
+
+def filter_max_block_expr(s: str) -> str:
+    return re.sub(r"SELECT\s+MAX\s*\(\s*number\s*\)\s+FROM\s+ethereum\.blocks\s+WHERE\s+time\s*(<|<=)\s*(?:('.+')|(\(.+\)))",
+                  max_block_number, s, flags=re.IGNORECASE)
+
+
+def fix_bytea(match):
+    arg = match.group(1)
+    if arg is None:
+        return "\\\\x" + match.group(2)
+    else:
+        return arg + "::BYTEA"
+
+
+def filter_bytea_literals(s: str) -> str:
+    return re.sub(r"(?:('\\x[\da-f]{2,}')(?! *:: *BYTEA))|(?:\\\\([\da-f]{2,}))", fix_bytea, s, flags=re.IGNORECASE)
+
+
 def apply_schema(files: List[File], env: Dict[str, str], backfill: bool = False):
     for file in files:
-        with Popen(['psql', '-v', 'ON_ERROR_STOP=1'], stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True, restore_signals=True, env=env) as psql:
-            print(file.name)
+        if file.skip:
+            print("Skipping", file.name)
+            continue
+        print(file.name)
+        with Popen(['psql', '-v', 'ON_ERROR_STOP=1'], stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True,
+                   restore_signals=True, env=env) as psql:
             with open(file.name, 'r') as f:
                 for i, line in enumerate(f.readlines(), start=1):
-                    if backfill or (file.split <= 0 or i < file.split):
+                    if backfill or file.split <= 0 or i < file.split:
+                        line = filter_bytea_literals(line)
+                        if backfill:
+                            line = filter_max_block_expr(line)
                         print(line, file=psql.stdin, flush=True, end='')
             psql.stdin.close()
             for line in psql.stderr.readlines():
@@ -139,8 +188,8 @@ def apply_schema(files: List[File], env: Dict[str, str], backfill: bool = False)
                 print(line, end='')
 
 
-def make_backfill_scripts(files: List[File]):
-    with open('script-list.txt', 'w') as fl:
+def make_backfill_scripts(filename: str, files: List[File]):
+    with open(filename, 'w') as fl:
         for file in files:
             if file.split > 0:
                 path = Path(file.name)
@@ -150,6 +199,26 @@ def make_backfill_scripts(files: List[File]):
                     for i, line in enumerate(f.readlines(), start=1):
                         if i >= file.split:
                             print(line, file=bf, end='')
+
+
+def apply_backfill_scripts(filename: str, env: Dict[str, str]):
+    with open(filename, 'w') as f:
+        for fn in f.readlines():
+            fn = fn.strip()
+            if fn.startswith("#"):
+                print("Skipping", fn)
+                continue
+            print(fn)
+            with Popen(['psql', '-v', 'ON_ERROR_STOP=1'], stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True,
+                       restore_signals=True, env=env) as psql:
+                with open(fn, 'r') as f:
+                    for i, line in enumerate(f.readlines(), start=1):
+                        print(filter_max_block_expr(line), file=psql.stdin, flush=True, end='')
+                psql.stdin.close()
+                for line in psql.stderr.readlines():
+                    print(line, end='')
+                for line in psql.stdout.readlines():
+                    print(line, end='')
 
 
 def print_updated_files(new_files: List[File], modified_files: List[File], removed_files: List[File]) -> bool:
@@ -172,47 +241,55 @@ def print_updated_files(new_files: List[File], modified_files: List[File], remov
     return has_updates
 
 
-def main(argv) -> int:
-    opts, args = getopt.getopt(argv, "ub")
-    update = False
-    backfill = False
-    for opt, arg in opts:
-        if opt == '-u':
-            update = True
-        elif opt == '-b':
-            backfill = True
+def main(args) -> int:
+    if args.revert_patch:
+        revert_patch('ethereum')
+        return 0
 
-    if update:
+    if args.update_list:
         files = load_file_list('scripts.csv')
         new_files = init_file_list('ethereum/**/*.sql')
         new_files_, modified_files, removed_files = update_file_list('scripts.csv', files, new_files)
         print_updated_files(new_files_, modified_files, removed_files)
-        make_backfill_scripts(files.values())
+        make_backfill_scripts('script-list.txt', files.values())
         return 0
 
     files = load_file_list('scripts.csv')
     new_files, modified_files, removed_files = check_file_list('ethereum/**/*.sql', files)
-    if print_updated_files(new_files, modified_files, removed_files):
-        print('Have to fix updates')
-        return -1
+    if not args.skip_patch:
+        if print_updated_files(new_files, modified_files, removed_files):
+            print('Have to fix updates')
+            return -1
 
     if len(files) == 0:
         print('No scripts to apply')
         return -1
 
-    env = get_env()
+    if not args.skip_patch:
+        if apply_patch('patch.patch') != 0:
+            return -1
 
-    if apply_patch('patch.patch') != 0:
-        return -1
+    env = get_env()
 
     if prepare('prepare.sql', env) != 0:
         return -1
 
-    apply_schema(files.values(), env, backfill)
+    if args.apply_backfills:
+        apply_backfill_scripts('script-list.txt', env)
+    else:
+        apply_schema(files.values(), env, args.use_backfills)
     return 0
 
 
 if __name__ == "__main__":
-    return_code = main(sys.argv[1:])
+    parser = argparse.ArgumentParser(description='Script to apply Dune abstractions scripts in `ethereum` dir')
+    parser.add_argument('-u', '--update-list', dest='update_list', action='store_true', help='update script list `scripts.csv`', default=False)
+    parser.add_argument('-a', '--apply-backfills', dest='apply_backfills', action='store_true', help='apply backfill query files', default=False)
+    parser.add_argument('-b', '--use-backfills', dest='use_backfills', action='store_true', help='use backfill queries if exists', default=False)
+    parser.add_argument('-s', '--skip-patch', dest='skip_patch', action='store_true', help='skip patch applying', default=False)
+    parser.add_argument('-r', '--revert-patch', dest='revert_patch', action='store_true', help='revert patch modifications', default=False)
+    args = parser.parse_args()
+    print(args)
+    return_code = main(args)
     if return_code != 0:
         exit(return_code)

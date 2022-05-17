@@ -1,0 +1,2748 @@
+diff --git a/ethereum/aave/insert_aave_daily_atoken_balances.sql b/ethereum/aave/insert_aave_daily_atoken_balances.sql
+index b027b5d..fbe9ad1 100644
+--- a/ethereum/aave/insert_aave_daily_atoken_balances.sql
++++ b/ethereum/aave/insert_aave_daily_atoken_balances.sql
+@@ -130,7 +130,7 @@ INSERT INTO cron.job (schedule, command)
+ VALUES ('15,45 * * * *', $$
+     SELECT aave.insert_aave_daily_atoken_balances(
+         (SELECT DATE_TRUNC('day',NOW()) - interval '3 days'),
+-        (SELECT DATE_TRUNC('day',NOW()) );
++        (SELECT DATE_TRUNC('day',NOW()) ));
+ 	
+ $$)
+ ON CONFLICT (command) DO UPDATE SET schedule=EXCLUDED.schedule;
+diff --git a/ethereum/aave/insert_aave_daily_interest_rates.sql b/ethereum/aave/insert_aave_daily_interest_rates.sql
+index b457500..dafc94b 100644
+--- a/ethereum/aave/insert_aave_daily_interest_rates.sql
++++ b/ethereum/aave/insert_aave_daily_interest_rates.sql
+@@ -76,7 +76,7 @@ INSERT INTO cron.job (schedule, command)
+ VALUES ('14,44 * * * *', $$
+     SELECT aave.insert_aave_daily_interest_rates(
+         (SELECT DATE_TRUNC('day',NOW()) - interval '3 days'),
+-        (SELECT DATE_TRUNC('day',NOW()) );
++        (SELECT DATE_TRUNC('day',NOW()) ));
+ 	
+ $$)
+ ON CONFLICT (command) DO UPDATE SET schedule=EXCLUDED.schedule;
+diff --git a/ethereum/aave/insert_aave_daily_liquidity_mining_rates.sql b/ethereum/aave/insert_aave_daily_liquidity_mining_rates.sql
+index 43dfd6d..be85f19 100644
+--- a/ethereum/aave/insert_aave_daily_liquidity_mining_rates.sql
++++ b/ethereum/aave/insert_aave_daily_liquidity_mining_rates.sql
+@@ -116,7 +116,7 @@ INSERT INTO cron.job (schedule, command)
+ VALUES ('16,46 * * * *', $$
+     SELECT aave.insert_aave_daily_liquidity_mining_rates(
+         (SELECT DATE_TRUNC('day',NOW()) - interval '3 days'),
+-        (SELECT DATE_TRUNC('day',NOW()) );
++        (SELECT DATE_TRUNC('day',NOW()) ));
+ 	
+ $$)
+ ON CONFLICT (command) DO UPDATE SET schedule=EXCLUDED.schedule;
+diff --git a/ethereum/aave/insert_aave_tokens.sql b/ethereum/aave/insert_aave_tokens.sql
+index c05343a..17cef22 100644
+--- a/ethereum/aave/insert_aave_tokens.sql
++++ b/ethereum/aave/insert_aave_tokens.sql
+@@ -79,7 +79,7 @@ SELECT
+ , additional_tokens AS ( --i.e. ARC, RWA, etc.
+ -- deposit tokens
+ SELECT 
+-l.contract_address AS token_address,
++l.contract_address::BYTEA AS token_address,
+ bytea2numeric(substring(data from 65 for 32)) AS decimals,
+ regexp_replace(REPLACE(encode(substring(data from 288 for 128),'escape')::text,'\000',''), '\W', ' ', 'g') AS symbol,
+ get_address_from_data(topic2) AS underlying_token_address,
+@@ -98,7 +98,7 @@ AND block_time >= start_time
+ UNION ALL
+ --borrow tokens
+ SELECT 
+-l.contract_address AS token_address,
++l.contract_address::BYTEA AS token_address,
+ bytea2numeric(substring(data from 33 for 32)) AS decimals,
+ regexp_replace(replace(encode(substring(data from 256 for 64), 'escape')::text,'\000',''), '\W', ' ', 'g') AS symbol,
+ get_address_from_data(topic2) AS underlying_token_address,
+@@ -163,7 +163,7 @@ INSERT INTO cron.job (schedule, command)
+ VALUES ('15,45 * * * *', $$
+     SELECT aave.insert_aave_tokens(
+         (SELECT NOW() - interval '1 year'),
+-        (SELECT NOW());
++        (SELECT NOW()));
+ 	
+ $$)
+ ON CONFLICT (command) DO UPDATE SET schedule=EXCLUDED.schedule;
+diff --git a/ethereum/aave/llama_aave_treasury/insert_aave_daily_treasury_events.sql b/ethereum/aave/llama_aave_treasury/insert_aave_daily_treasury_events.sql
+index 92f7b30..ccacaf4 100644
+--- a/ethereum/aave/llama_aave_treasury/insert_aave_daily_treasury_events.sql
++++ b/ethereum/aave/llama_aave_treasury/insert_aave_daily_treasury_events.sql
+@@ -74,7 +74,6 @@ SELECT address FROM llama.llama_treasury_addresses WHERE protocol = 'Aave' AND b
+     WHERE l."to" IN (SELECT address FROM addresses)
+     AND (call_type NOT IN ('delegatecall', 'callcode', 'staticcall') or call_type is null)
+     AND success = true
+-    AND "tx_success" = true
+     AND block_time >= start_time_day AND block_time <= end_time_day
+     
+     
+@@ -90,7 +89,6 @@ SELECT address FROM llama.llama_treasury_addresses WHERE protocol = 'Aave' AND b
+     WHERE l."from" IN (SELECT address FROM addresses)
+     AND (call_type NOT IN ('delegatecall', 'callcode', 'staticcall') or call_type is null)
+     AND success = true
+-    AND "tx_success" = true
+     AND block_time >= start_time_day AND block_time <= end_time_day
+     
+     ) a
+@@ -153,9 +151,9 @@ FROM
+     SELECT t."contract_address",
+     t."evt_block_time", --t.evt_tx_hash, t."to" AS counterparty, -- trs from treasury
+     (t.value*(-1))::decimal AS value, t.value AS abs_value,
+-    CASE WHEN t."to" IN (SELECT address FROM addresses) THEN 'Transfer Out'
++    CASE WHEN t."to" IN (SELECT address::BYTEA FROM addresses) THEN 'Transfer Out'
+     WHEN t."evt_tx_hash" IN (SELECT "evt_tx_hash" FROM aave."stkAAVE_evt_Staked"
+-                                WHERE "from" IN (SELECT address FROM addresses) ) THEN 'Staking Out'
++                                WHERE "from" IN (SELECT address::BYTEA FROM addresses) ) THEN 'Staking Out'
+     /*WHEN t."to" IN ('\xa1116930326D21fB917d5A27F1E9943A9595fb47', --Balancer Pool
+                     '\x4da27a545c0c5b758a6ba100e3a049001de870f5') --stkAAVE
+                     THEN 'Staking Reward' --Staking Reward*/
+@@ -168,11 +166,11 @@ FROM
+     g.address AS ag_address, g.version
+     FROM erc20."ERC20_evt_Transfer" t
+     INNER JOIN llama.llama_treasury_addresses g
+-    ON t."from" = g.address
++    ON t."from" = g.address::BYTEA
+     AND g.blockchain = 'Ethereum'
+     AND g."protocol" = 'Aave'
+     
+-    WHERE t."from" IN (SELECT address FROM addresses)
++    WHERE t."from" IN (SELECT address::BYTEA FROM addresses)
+     AND t.evt_block_time >= start_time_day AND t.evt_block_time <= end_time_day
+     
+     UNION ALL
+@@ -180,13 +178,13 @@ FROM
+     SELECT tb."contract_address", 
+     tb."evt_block_time", --tb.evt_tx_hash, tb."from" AS counterparty, -- trs to treasury
+     (tb.value*(1))::decimal AS value, tb.value AS abs_value,
+-    CASE WHEN tb."from" IN (SELECT address FROM addresses) THEN 'Transfer In'
++    CASE WHEN tb."from" IN (SELECT address::BYTEA FROM addresses) THEN 'Transfer In'
+     WHEN tb."evt_tx_hash" IN (SELECT "evt_tx_hash" FROM aave_v2."IncentivesController_evt_RewardsClaimed"
+-                                WHERE "to" IN (SELECT address FROM addresses) ) THEN 'Rewards In' --claiming liquidity mining
++                                WHERE "to" IN (SELECT address::BYTEA FROM addresses) ) THEN 'Rewards In' --claiming liquidity mining
+     WHEN tb."evt_tx_hash" IN (SELECT "call_tx_hash" FROM aave."stkAAVE_call_claimRewards"
+-                                WHERE "to" IN (SELECT address FROM addresses) ) THEN 'Rewards In' --claiming staking rewards
++                                WHERE "to" IN (SELECT address::BYTEA FROM addresses) ) THEN 'Rewards In' --claiming staking rewards
+     WHEN tb."evt_tx_hash" IN (SELECT "evt_tx_hash" FROM aave."stkAAVE_evt_Redeem"
+-                                WHERE "to" IN (SELECT address FROM addresses) ) THEN 'Staking In' --redeeming
++                                WHERE "to" IN (SELECT address::BYTEA FROM addresses) ) THEN 'Staking In' --redeeming
+     WHEN tb."from" = '\x0000000000000000000000000000000000000000' THEN 'Mint In' --aToken minting - we want this it's the 'share of interest'
+     WHEN tb."from" IN ( '\x1814222fa8c8c1c1bf380e3bbfbd9de8657da476' --Uniswap
+                     ,'\x7c66550c9c730b6fdd4c03bc2e73c5462c5f7acc' --Kyber
+@@ -196,11 +194,11 @@ FROM
+     g.address AS ag_address, g.version
+     FROM erc20."ERC20_evt_Transfer" tb
+     INNER JOIN llama.llama_treasury_addresses g
+-    ON tb."to" = g.address
++    ON tb."to" = g.address::BYTEA
+     AND g.blockchain = 'Ethereum'
+     AND g."protocol" = 'Aave'
+     
+-    WHERE tb."to" IN (SELECT address FROM addresses)
++    WHERE tb."to" IN (SELECT address::BYTEA FROM addresses)
+     AND tb.evt_block_time >= start_time_day AND tb.evt_block_time <= end_time_day
+     
+     UNION ALL
+@@ -281,7 +279,7 @@ INSERT INTO cron.job (schedule, command)
+ VALUES ('17,47 * * * *', $$
+     SELECT aave.insert_aave_daily_treasury_events(
+         (SELECT DATE_TRUNC('day',NOW()) - interval '3 days'),
+-        (SELECT DATE_TRUNC('day',NOW()) );
++        (SELECT DATE_TRUNC('day',NOW()) ));
+ 	
+ $$)
+ ON CONFLICT (command) DO UPDATE SET schedule=EXCLUDED.schedule;
+diff --git a/ethereum/aave/llama_aave_treasury/insert_aave_daily_treasury_fees.sql b/ethereum/aave/llama_aave_treasury/insert_aave_daily_treasury_fees.sql
+index 0efd065..faebd7d 100644
+--- a/ethereum/aave/llama_aave_treasury/insert_aave_daily_treasury_fees.sql
++++ b/ethereum/aave/llama_aave_treasury/insert_aave_daily_treasury_fees.sql
+@@ -65,7 +65,7 @@ FROM
+                         ,'\x7c66550c9c730b6fdd4c03bc2e73c5462c5f7acc' --Kyber
+                         ,'\x65bf64ff5f51272f729bdcd7acfb00677ced86cd' --Kyber
+                     )
+-    AND e."to" IN (SELECT address FROM llama.llama_treasury_addresses WHERE protocol = 'Aave' AND version = 'V1')
++    AND e."to" IN (SELECT address::BYTEA FROM llama.llama_treasury_addresses WHERE protocol = 'Aave' AND version = 'V1')
+     AND e."contract_address" != '\x80fb784b7ed66730e8b1dbd9820afd29931aab03' --excluding because LEND gets burned
+ 	AND e.evt_block_time >= start_time_day AND e.evt_block_time <= end_time_day
+     
+@@ -77,7 +77,7 @@ FROM
+                         ,'\x7c66550c9c730b6fdd4c03bc2e73c5462c5f7acc' --Kyber
+                         ,'\x65bf64ff5f51272f729bdcd7acfb00677ced86cd' --Kyber
+                     )
+-    AND e."to" IN (SELECT address FROM llama.llama_treasury_addresses WHERE protocol = 'Aave' AND version = 'V1')
++    AND e."to" IN (SELECT address::BYTEA FROM llama.llama_treasury_addresses WHERE protocol = 'Aave' AND version = 'V1')
+     AND e."contract_address" = '\x80fb784b7ed66730e8b1dbd9820afd29931aab03' --only LEND so we get the revenue that's actually burnt LEND
+ 	AND e.evt_block_time >= start_time_day AND e.evt_block_time <= end_time_day
+     
+@@ -102,7 +102,7 @@ FROM
+     WHERE e."from" IN ( '\x2fbb0c60a41cb7ea5323071624dcead3d213d0fa' --v2
+                         ,'\x3dfd23a6c5e8bbcfc9581d2e864a68feb6a076d3' --v1
+                     )
+-    AND e."to" IN (SELECT address FROM llama.llama_treasury_addresses WHERE protocol = 'Aave' AND version IN ('V1','V2'))
++    AND e."to" IN (SELECT address::BYTEA FROM llama.llama_treasury_addresses WHERE protocol = 'Aave' AND version IN ('V1','V2'))
+     AND e.evt_tx_hash NOT IN (SELECT evt_tx_hash FROM tran)
+  	AND e.evt_block_time >= start_time_day AND e.evt_block_time <= end_time_day
+  
+@@ -143,7 +143,7 @@ INSERT INTO cron.job (schedule, command)
+ VALUES ('15,45 * * * *', $$
+     SELECT aave.insert_aave_daily_treasury_fees(
+         (SELECT DATE_TRUNC('day',NOW()) - interval '3 days'),
+-        (SELECT DATE_TRUNC('day',NOW()) );
++        (SELECT DATE_TRUNC('day',NOW()) ));
+ 	
+ $$)
+ ON CONFLICT (command) DO UPDATE SET schedule=EXCLUDED.schedule;
+diff --git a/ethereum/balancer/view_balances.sql b/ethereum/balancer/view_balances.sql
+index c33cb37..c5b3c6c 100644
+--- a/ethereum/balancer/view_balances.sql
++++ b/ethereum/balancer/view_balances.sql
+@@ -1,8 +1,7 @@
+ BEGIN;
+ 
+-DROP MATERIALIZED VIEW IF EXISTS balancer.view_balances;
+ 
+-CREATE MATERIALIZED VIEW balancer.view_balances AS (
++CREATE MATERIALIZED VIEW IF NOT EXISTS balancer.view_balances AS (
+     WITH pools AS (
+         SELECT pool as pools
+         FROM balancer."BFactory_evt_LOG_NEW_POOL"
+diff --git a/ethereum/balancer/view_trades.sql b/ethereum/balancer/view_trades.sql
+index 004fba6..dfd7ef2 100644
+--- a/ethereum/balancer/view_trades.sql
++++ b/ethereum/balancer/view_trades.sql
+@@ -1,4 +1,4 @@
+-CREATE TABLE balancer.view_trades (
++CREATE TABLE IF NOT EXISTS balancer.view_trades (
+     block_time timestamptz NOT NULL,
+     token_a_symbol text,
+     token_b_symbol text,
+@@ -73,7 +73,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/balancer/view_vebal_balances.sql b/ethereum/balancer/view_vebal_balances.sql
+index ccacfde..1d05760 100644
+--- a/ethereum/balancer/view_vebal_balances.sql
++++ b/ethereum/balancer/view_vebal_balances.sql
+@@ -1,6 +1,5 @@
+-DROP VIEW IF EXISTS balancer.view_vebal_balances;
+ 
+-CREATE VIEW balancer.view_vebal_balances AS
++CREATE OR REPLACE VIEW balancer.view_vebal_balances AS
+ 
+ WITH base_locks AS (
+         SELECT d.provider, ts AS locked_at, locktime AS unlocked_at, ts AS updated_at
+diff --git a/ethereum/balancer_v1/view_liquidity.sql b/ethereum/balancer_v1/view_liquidity.sql
+index 780e42a..09f7591 100644
+--- a/ethereum/balancer_v1/view_liquidity.sql
++++ b/ethereum/balancer_v1/view_liquidity.sql
+@@ -2,9 +2,8 @@ BEGIN;
+ 
+ CREATE SCHEMA IF NOT EXISTS balancer_v1;
+ 
+-DROP MATERIALIZED VIEW IF EXISTS balancer_v1.view_liquidity;
+ 
+-CREATE MATERIALIZED VIEW balancer_v1.view_liquidity AS (
++CREATE MATERIALIZED VIEW IF NOT EXISTS balancer_v1.view_liquidity AS (
+     WITH pool_labels AS (
+         SELECT
+             address AS pool_id,
+diff --git a/ethereum/balancer_v2/view_bpt_prices.sql b/ethereum/balancer_v2/view_bpt_prices.sql
+index 8189a56..70bf238 100644
+--- a/ethereum/balancer_v2/view_bpt_prices.sql
++++ b/ethereum/balancer_v2/view_bpt_prices.sql
+@@ -1,8 +1,7 @@
+ BEGIN;
+ 
+-DROP MATERIALIZED VIEW IF EXISTS balancer_v2.view_bpt_prices;
+ 
+-CREATE MATERIALIZED VIEW balancer_v2.view_bpt_prices AS (
++CREATE MATERIALIZED VIEW IF NOT EXISTS balancer_v2.view_bpt_prices AS (
+     WITH bpt_trades AS (
+         SELECT
+             block_time,
+diff --git a/ethereum/balancer_v2/view_liquidity.sql b/ethereum/balancer_v2/view_liquidity.sql
+index 738882f..98ee355 100644
+--- a/ethereum/balancer_v2/view_liquidity.sql
++++ b/ethereum/balancer_v2/view_liquidity.sql
+@@ -2,9 +2,7 @@ BEGIN;
+ 
+ CREATE SCHEMA IF NOT EXISTS balancer_v2;
+ 
+-DROP MATERIALIZED VIEW IF EXISTS balancer_v2.view_liquidity;
+-
+-CREATE MATERIALIZED VIEW balancer_v2.view_liquidity AS (
++CREATE MATERIALIZED VIEW IF NOT EXISTS balancer_v2.view_liquidity AS (
+     WITH pool_labels AS (
+         SELECT
+             address AS pool_id,
+diff --git a/ethereum/curvefi/view_pools.sql b/ethereum/curvefi/view_pools.sql
+index df7c991..2e43283 100644
+--- a/ethereum/curvefi/view_pools.sql
++++ b/ethereum/curvefi/view_pools.sql
+@@ -897,5 +897,5 @@ SELECT
+     undercoin3,
+     gauge_contract
+ FROM pools p
+-LEFT JOIN ethereum.contracts c ON c.address = pool_address
++LEFT JOIN ethereum.contracts c ON c.address = pool_address::TEXT
+ ORDER BY dune_table_name DESC
+diff --git a/ethereum/dex/trades/insert_1inch.sql b/ethereum/dex/trades/insert_1inch.sql
+index 96cdcbe..6a87e55 100644
+--- a/ethereum/dex/trades/insert_1inch.sql
++++ b/ethereum/dex/trades/insert_1inch.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+@@ -60,7 +60,7 @@ WITH rows AS (
+             '1inch' AS project,
+             version,
+             'Aggregator' AS category,
+-            tx."from" AS trader_a,
++            tx."from"::BYTEA AS trader_a,
+             NULL::bytea AS trader_b,
+             to_amount AS token_a_amount_raw,
+             from_amount AS token_b_amount_raw,
+@@ -93,7 +93,7 @@ WITH rows AS (
+             '1inch' AS project,
+             '1split' as version,
+             'Aggregator' AS category,
+-            tx."from" AS trader_a,
++            tx."from"::BYTEA AS trader_a,
+             NULL::bytea AS trader_b,
+             to_amount AS token_a_amount_raw,
+             from_amount AS token_b_amount_raw,
+@@ -132,7 +132,7 @@ WITH rows AS (
+             '1inch' AS project,
+             '1proto' as version,
+             'Aggregator' AS category,
+-            tx."from" AS trader_a,
++            tx."from"::BYTEA AS trader_a,
+             NULL::bytea AS trader_b,
+             to_amount AS token_a_amount_raw,
+             from_amount AS token_b_amount_raw,
+@@ -198,12 +198,12 @@ WITH rows AS (
+             '1inch' AS project,
+             'UNI v2' AS version,
+             'Aggregator' AS category,
+-            tx."from" AS trader_a,
++            tx."from"::BYTEA AS trader_a,
+             NULL::bytea AS trader_b,
+             "output_returnAmount" AS token_a_amount_raw,
+             "amount" AS token_b_amount_raw,
+             NULL::numeric AS usd_amount,
+-            (CASE WHEN ll.to = '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2' AND substring("pools"[ARRAY_LENGTH("pools", 1)] from 1 for 1) IN ('\xc0', '\x40') THEN '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' ELSE ll.to END) AS token_a_address,
++            (CASE WHEN ll.to = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2' AND substring("pools"[ARRAY_LENGTH("pools", 1)] from 1 for 1) IN ('\xc0', '\x40') THEN '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' ELSE ll.to END)::BYTEA AS token_a_address,
+             (CASE WHEN "srcToken" = '\x0000000000000000000000000000000000000000' THEN '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' ELSE "srcToken" END) AS token_b_address,
+             us.contract_address AS exchange_contract_address,
+             call_tx_hash,
+@@ -228,7 +228,7 @@ WITH rows AS (
+             '1inch' AS project,
+             'UNI v3' AS version,
+             'Aggregator' AS category,
+-            tx."from" AS trader_a,
++            tx."from"::BYTEA AS trader_a,
+             NULL::bytea AS trader_b,
+             "output_returnAmount" AS token_a_amount_raw,
+             "amount" AS token_b_amount_raw,
+@@ -248,7 +248,7 @@ WITH rows AS (
+                     and COALESCE(ARRAY_LENGTH(call_trace_address, 1), 0) + 3 = COALESCE(ARRAY_LENGTH(tr1.trace_address, 1), 0)
+                     order by COALESCE(trace_address, array[]::int[])
+                     LIMIT 1
+-                ), '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') as "srcToken",
++                )::BYTEA, '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') as "srcToken",
+                 CASE WHEN ((pools[array_length(pools, 1)] / 2^252)::int & 2 <> 0) THEN '\xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+                 ELSE
+                     (select tr2.to from
+@@ -258,7 +258,7 @@ WITH rows AS (
+                         and tr2.from <> contract_address
+                         order by COALESCE(trace_address, array[]::int[]) desc
+                         LIMIT 1
+-                    )
++                    )::BYTEA
+                 END as "dstToken",
+                 "pools", "call_tx_hash", "call_trace_address", "call_block_time", "contract_address"
+             from (
+@@ -277,7 +277,7 @@ WITH rows AS (
+             '1inch' AS project,
+             'CLIPPER v1' AS version,
+             'Aggregator' AS category,
+-            tx."from" AS trader_a,
++            tx."from"::BYTEA AS trader_a,
+             NULL::bytea AS trader_b,
+             "output_returnAmount" AS token_a_amount_raw,
+             "amount" AS token_b_amount_raw,
+@@ -303,7 +303,7 @@ WITH rows AS (
+             '1inch Limit Order Protocol' AS project,
+             version,
+             'DEX' AS category,
+-            "from"  AS trader_a,
++            "from"::BYTEA  AS trader_a,
+             maker AS trader_b,
+             "output_1" AS token_a_amount_raw,
+             "output_0" AS token_b_amount_raw,
+@@ -330,7 +330,7 @@ WITH rows AS (
+             '1inch Limit Order Protocol' AS project,
+             'eRFQ v1' AS version,
+             'DEX' AS category,
+-            "from"  AS trader_a,
++            "from"::BYTEA  AS trader_a,
+             decode(substring("order"::jsonb->>'maker' from 3), 'hex') AS trader_b,
+             "output_1" AS token_a_amount_raw,
+             "output_0" AS token_b_amount_raw,
+@@ -356,7 +356,7 @@ WITH rows AS (
+             '1inch' AS project,
+             'eRFQ v1' AS version,
+             'Aggregator' AS category,
+-            "from"  AS trader_a,
++            "from"::BYTEA  AS trader_a,
+             decode(substring("order"::jsonb->>'maker' from 3), 'hex') AS trader_b,
+             "output_1" AS token_a_amount_raw,
+             "output_0" AS token_b_amount_raw,
+@@ -382,7 +382,7 @@ WITH rows AS (
+             '1inch Limit Order Protocol' AS project,
+             'RFQ v1' AS version,
+             'DEX' AS category,
+-            ts."from"  AS trader_a,
++            ts."from"::BYTEA  AS trader_a,
+             decode(substring("order"::jsonb->>'makerAssetData' from 35 for 40), 'hex') AS trader_b,
+             bytea2numeric(substring(tf2.input from 69 for 32)) AS token_a_amount_raw,
+             bytea2numeric(substring(tf1.input from 69 for 32)) AS token_b_amount_raw,
+@@ -407,7 +407,7 @@ WITH rows AS (
+             '1inch Limit Order Protocol' AS project,
+             'RFQ v2' as version,
+             'DEX' AS category,
+-            ts."from" AS trader_a,
++            ts."from"::BYTEA AS trader_a,
+             decode(substring("order"::jsonb->>'maker' from 3 for 40), 'hex') AS trader_b,
+             "output_1" AS token_a_amount_raw,
+             "output_0" AS token_b_amount_raw,
+@@ -425,7 +425,7 @@ WITH rows AS (
+         ) call
+         LEFT JOIN ethereum.traces ts ON call_tx_hash = ts.tx_hash AND call_trace_address = ts.trace_address
+     ) dexs
+-    INNER JOIN ethereum.transactions tx
++    LEFT JOIN ethereum.transactions tx
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+diff --git a/ethereum/dex/trades/insert_1inch_lp.sql b/ethereum/dex/trades/insert_1inch_lp.sql
+index d8c2881..6ee87af 100644
+--- a/ethereum/dex/trades/insert_1inch_lp.sql
++++ b/ethereum/dex/trades/insert_1inch_lp.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_airswap.sql b/ethereum/dex/trades/insert_airswap.sql
+index 60f3e4b..9fc2094 100644
+--- a/ethereum/dex/trades/insert_airswap.sql
++++ b/ethereum/dex/trades/insert_airswap.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_balancer.sql b/ethereum/dex/trades/insert_balancer.sql
+index 65f65aa..8b9ee08 100644
+--- a/ethereum/dex/trades/insert_balancer.sql
++++ b/ethereum/dex/trades/insert_balancer.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_bancor.sql b/ethereum/dex/trades/insert_bancor.sql
+index ab253c2..cc99c6e 100644
+--- a/ethereum/dex/trades/insert_bancor.sql
++++ b/ethereum/dex/trades/insert_bancor.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_clipper.sql b/ethereum/dex/trades/insert_clipper.sql
+index 69297dc..fabd513 100644
+--- a/ethereum/dex/trades/insert_clipper.sql
++++ b/ethereum/dex/trades/insert_clipper.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_cofix.sql b/ethereum/dex/trades/insert_cofix.sql
+index 5b8d5ea..540f7fd 100644
+--- a/ethereum/dex/trades/insert_cofix.sql
++++ b/ethereum/dex/trades/insert_cofix.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_convergence.sql b/ethereum/dex/trades/insert_convergence.sql
+index c7955f1..f1a6e4b 100644
+--- a/ethereum/dex/trades/insert_convergence.sql
++++ b/ethereum/dex/trades/insert_convergence.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_curve.sql b/ethereum/dex/trades/insert_curve.sql
+index c0604e8..3c60792 100644
+--- a/ethereum/dex/trades/insert_curve.sql
++++ b/ethereum/dex/trades/insert_curve.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_ddex.sql b/ethereum/dex/trades/insert_ddex.sql
+index 85f6b7c..a864549 100644
+--- a/ethereum/dex/trades/insert_ddex.sql
++++ b/ethereum/dex/trades/insert_ddex.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_defi_swap.sql b/ethereum/dex/trades/insert_defi_swap.sql
+index 3505e8d..bbd94c8 100644
+--- a/ethereum/dex/trades/insert_defi_swap.sql
++++ b/ethereum/dex/trades/insert_defi_swap.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") AS trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) AS trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_defiplaza.sql b/ethereum/dex/trades/insert_defiplaza.sql
+index 61044dc..de96b36 100644
+--- a/ethereum/dex/trades/insert_defiplaza.sql
++++ b/ethereum/dex/trades/insert_defiplaza.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") AS trader_a,
++        coalesce(trader_a, tx."from"::BYTEA) AS trader_a,
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_dfx_finance.sql b/ethereum/dex/trades/insert_dfx_finance.sql
+index f9d8fd4..fcda1e0 100644
+--- a/ethereum/dex/trades/insert_dfx_finance.sql
++++ b/ethereum/dex/trades/insert_dfx_finance.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_dodo.sql b/ethereum/dex/trades/insert_dodo.sql
+index 30091ba..03079ce 100644
+--- a/ethereum/dex/trades/insert_dodo.sql
++++ b/ethereum/dex/trades/insert_dodo.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_dydx.sql b/ethereum/dex/trades/insert_dydx.sql
+index a94ad0c..38f5acd 100644
+--- a/ethereum/dex/trades/insert_dydx.sql
++++ b/ethereum/dex/trades/insert_dydx.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_futureswap.sql b/ethereum/dex/trades/insert_futureswap.sql
+index bff3b37..1db5560 100644
+--- a/ethereum/dex/trades/insert_futureswap.sql
++++ b/ethereum/dex/trades/insert_futureswap.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+       project,
+       version,
+       category,
+-      coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++      coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+       trader_b,
+       token_a_amount_raw,
+       token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_gnosis_protocol.sql b/ethereum/dex/trades/insert_gnosis_protocol.sql
+index 525db7a..67929c9 100644
+--- a/ethereum/dex/trades/insert_gnosis_protocol.sql
++++ b/ethereum/dex/trades/insert_gnosis_protocol.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_idex.sql b/ethereum/dex/trades/insert_idex.sql
+index 7be84de..a5a8269 100644
+--- a/ethereum/dex/trades/insert_idex.sql
++++ b/ethereum/dex/trades/insert_idex.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_indexed_finance.sql b/ethereum/dex/trades/insert_indexed_finance.sql
+index a8c382f..0a8e1e7 100644
+--- a/ethereum/dex/trades/insert_indexed_finance.sql
++++ b/ethereum/dex/trades/insert_indexed_finance.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") AS trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) AS trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_integral_size.sql b/ethereum/dex/trades/insert_integral_size.sql
+index 60dbe67..87f55bf 100644
+--- a/ethereum/dex/trades/insert_integral_size.sql
++++ b/ethereum/dex/trades/insert_integral_size.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_kyber.sql b/ethereum/dex/trades/insert_kyber.sql
+index a737e76..4f0a8ab 100644
+--- a/ethereum/dex/trades/insert_kyber.sql
++++ b/ethereum/dex/trades/insert_kyber.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_linkswap.sql b/ethereum/dex/trades/insert_linkswap.sql
+index 1f7788e..9be50f0 100644
+--- a/ethereum/dex/trades/insert_linkswap.sql
++++ b/ethereum/dex/trades/insert_linkswap.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_loopring.sql b/ethereum/dex/trades/insert_loopring.sql
+index b7a7b4f..204185b 100644
+--- a/ethereum/dex/trades/insert_loopring.sql
++++ b/ethereum/dex/trades/insert_loopring.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+@@ -98,7 +98,7 @@ WITH rows AS (
+             WITH transactions AS (
+                 SELECT loopring.fn_process_block_v2(
+                     CAST(t.block ->> 'blockSize' AS INT),
+-                    decode(substring(t.block ->> 'data', 3, char_length(t.block ->> 'data') - 2), 'hex'),
++                    decode(t.block->>'data', 'base64'),
+                     c.call_block_time,
+                     blockIdx::integer
+                 ) as transaction,
+diff --git a/ethereum/dex/trades/insert_luaswap.sql b/ethereum/dex/trades/insert_luaswap.sql
+index 348dca1..e18eb04 100644
+--- a/ethereum/dex/trades/insert_luaswap.sql
++++ b/ethereum/dex/trades/insert_luaswap.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") AS trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) AS trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_mistx.sql b/ethereum/dex/trades/insert_mistx.sql
+index e93faaa..d73379e 100644
+--- a/ethereum/dex/trades/insert_mistx.sql
++++ b/ethereum/dex/trades/insert_mistx.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_mooniswap.sql b/ethereum/dex/trades/insert_mooniswap.sql
+index 3eb231d..c13af4f 100644
+--- a/ethereum/dex/trades/insert_mooniswap.sql
++++ b/ethereum/dex/trades/insert_mooniswap.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_mstable.sql b/ethereum/dex/trades/insert_mstable.sql
+index 41564bd..70e796b 100644
+--- a/ethereum/dex/trades/insert_mstable.sql
++++ b/ethereum/dex/trades/insert_mstable.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") AS trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) AS trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_oasis.sql b/ethereum/dex/trades/insert_oasis.sql
+index 2ec9365..b79547c 100644
+--- a/ethereum/dex/trades/insert_oasis.sql
++++ b/ethereum/dex/trades/insert_oasis.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_paraswap.sql b/ethereum/dex/trades/insert_paraswap.sql
+index 4c743c2..0d8d741 100644
+--- a/ethereum/dex/trades/insert_paraswap.sql
++++ b/ethereum/dex/trades/insert_paraswap.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         'Paraswap' AS project,
+         '1' AS version,
+         'Aggregator' AS category,
+-        COALESCE(trader_a, tx."from") AS trader_a,
++        COALESCE(trader_a, tx."from"::BYTEA) AS trader_a,
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_powerindex.sql b/ethereum/dex/trades/insert_powerindex.sql
+index 5c4c50f..536a05f 100644
+--- a/ethereum/dex/trades/insert_powerindex.sql
++++ b/ethereum/dex/trades/insert_powerindex.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") AS trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) AS trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_saddle.sql b/ethereum/dex/trades/insert_saddle.sql
+index 6f2d582..388b992 100644
+--- a/ethereum/dex/trades/insert_saddle.sql
++++ b/ethereum/dex/trades/insert_saddle.sql
+@@ -56,7 +56,7 @@ FlashLoanTokens AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_sakeswap.sql b/ethereum/dex/trades/insert_sakeswap.sql
+index ac0ad67..71c3a5e 100644
+--- a/ethereum/dex/trades/insert_sakeswap.sql
++++ b/ethereum/dex/trades/insert_sakeswap.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_sfinance.sql b/ethereum/dex/trades/insert_sfinance.sql
+index d1473b5..cd5d19e 100644
+--- a/ethereum/dex/trades/insert_sfinance.sql
++++ b/ethereum/dex/trades/insert_sfinance.sql
+@@ -37,7 +37,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+@@ -156,7 +156,7 @@ WHERE NOT EXISTS (
+ 
+ INSERT INTO cron.job (schedule, command)
+ VALUES ('*/10 * * * *', $$
+-    SELECT dex.insert_finance(
++    SELECT dex.insert_sfinance(
+         (SELECT max(block_time) - interval '1 days' FROM dex.trades WHERE project='S.finance'),
+         (SELECT now()),
+         (SELECT max(number) FROM ethereum.blocks WHERE time < (SELECT max(block_time) - interval '1 days' FROM dex.trades WHERE project='S.finance')),
+diff --git a/ethereum/dex/trades/insert_shell.sql b/ethereum/dex/trades/insert_shell.sql
+index 1ebe40f..744622b 100644
+--- a/ethereum/dex/trades/insert_shell.sql
++++ b/ethereum/dex/trades/insert_shell.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") AS trader_a,
++        coalesce(trader_a, tx."from"::BYTEA) AS trader_a,
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_shibaswap.sql b/ethereum/dex/trades/insert_shibaswap.sql
+index 6872da0..1d136b7 100644
+--- a/ethereum/dex/trades/insert_shibaswap.sql
++++ b/ethereum/dex/trades/insert_shibaswap.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_smoothy_finance.sql b/ethereum/dex/trades/insert_smoothy_finance.sql
+index f5bdb8e..2705f47 100644
+--- a/ethereum/dex/trades/insert_smoothy_finance.sql
++++ b/ethereum/dex/trades/insert_smoothy_finance.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") AS trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) AS trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_sushi.sql b/ethereum/dex/trades/insert_sushi.sql
+index 6ea795c..f9059ea 100644
+--- a/ethereum/dex/trades/insert_sushi.sql
++++ b/ethereum/dex/trades/insert_sushi.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_swapr.sql b/ethereum/dex/trades/insert_swapr.sql
+index f648c28..4aa08e9 100644
+--- a/ethereum/dex/trades/insert_swapr.sql
++++ b/ethereum/dex/trades/insert_swapr.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_tokenlon.sql b/ethereum/dex/trades/insert_tokenlon.sql
+index 54dd256..e5a20c7 100644
+--- a/ethereum/dex/trades/insert_tokenlon.sql
++++ b/ethereum/dex/trades/insert_tokenlon.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_unifi.sql b/ethereum/dex/trades/insert_unifi.sql
+index eff19ff..8dbb7dc 100644
+--- a/ethereum/dex/trades/insert_unifi.sql
++++ b/ethereum/dex/trades/insert_unifi.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_uniswap_v1.sql b/ethereum/dex/trades/insert_uniswap_v1.sql
+index 9d75800..0459f04 100644
+--- a/ethereum/dex/trades/insert_uniswap_v1.sql
++++ b/ethereum/dex/trades/insert_uniswap_v1.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_uniswap_v2.sql b/ethereum/dex/trades/insert_uniswap_v2.sql
+index 09ba269..648c732 100644
+--- a/ethereum/dex/trades/insert_uniswap_v2.sql
++++ b/ethereum/dex/trades/insert_uniswap_v2.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_uniswap_v3.sql b/ethereum/dex/trades/insert_uniswap_v3.sql
+index eacb655..3125689 100644
+--- a/ethereum/dex/trades/insert_uniswap_v3.sql
++++ b/ethereum/dex/trades/insert_uniswap_v3.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_xsigma.sql b/ethereum/dex/trades/insert_xsigma.sql
+index eef0637..e6063a6 100644
+--- a/ethereum/dex/trades/insert_xsigma.sql
++++ b/ethereum/dex/trades/insert_xsigma.sql
+@@ -37,7 +37,7 @@ WITH rows AS (
+         'xSigma' AS project,
+         '1' AS version,
+         'DEX' AS category,
+-        COALESCE(trader_a, tx."from") AS trader_a,
++        COALESCE(trader_a, tx."from"::BYTEA) AS trader_a,
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/insert_zeroex.sql b/ethereum/dex/trades/insert_zeroex.sql
+index f96bcba..816b239 100644
+--- a/ethereum/dex/trades/insert_zeroex.sql
++++ b/ethereum/dex/trades/insert_zeroex.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+diff --git a/ethereum/dex/trades/trades.sql b/ethereum/dex/trades/trades.sql
+index ccbd120..59ed4a4 100644
+--- a/ethereum/dex/trades/trades.sql
++++ b/ethereum/dex/trades/trades.sql
+@@ -1,4 +1,4 @@
+-CREATE TABLE dex.trades (
++CREATE TABLE IF NOT EXISTS dex.trades (
+     block_time timestamptz NOT NULL,
+     token_a_symbol text,
+     token_b_symbol text,
+diff --git a/ethereum/dex/view_token_prices.sql b/ethereum/dex/view_token_prices.sql
+index e6bba84..d2c22ee 100644
+--- a/ethereum/dex/view_token_prices.sql
++++ b/ethereum/dex/view_token_prices.sql
+@@ -1,8 +1,7 @@
+ BEGIN;
+ 
+-DROP MATERIALIZED VIEW IF EXISTS dex.view_token_prices;
+ 
+-CREATE MATERIALIZED VIEW dex.view_token_prices AS (
++CREATE MATERIALIZED VIEW IF NOT EXISTS dex.view_token_prices AS (
+     WITH tokens_in_prices_usd AS (
+         SELECT DISTINCT contract_address
+         FROM prices.usd
+diff --git a/ethereum/erc20/view_token_balances_daily.sql b/ethereum/erc20/view_token_balances_daily.sql
+index 0f894bb..09cd584 100644
+--- a/ethereum/erc20/view_token_balances_daily.sql
++++ b/ethereum/erc20/view_token_balances_daily.sql
+@@ -23,26 +23,3 @@ FROM b
+ INNER JOIN days d ON b.day <= d.day AND d.day < b.next_day 
+ left join erc20.tokens t on t.contract_address = token_address
+ left join prices.usd p on p.contract_address = token_address and p.minute = d.day
+-
+-
+-
+-with b as (
+-SELECT 
+-wallet_address,
+-token_address,
+---t.symbol as token_symbol,
+-amount_raw,
+---amount_raw / 10^coalesce(t.decimals, null) amount,
+---amount_raw / 10^coalesce(t.decimals, null) * p.price amount_usd,
+-generate_series(min(date_trunc('day', timestamp), date_trunc('day', NOW())), '1 day'::interval) as day
+-FROM erc20.token_balances
+---left join erc20.tokens t on t.contract_address = token_address
+---left join prices.usd p on p.contract_address = token_address and p.minute = timestamp
+-group by 1, 2, 3
+-)
+-SELECT *
+-FROM b
+-WHERE "day" > '2021-06-25'
+-AND wallet_address='\x65b27BA7362ce3f241DAfDFC03Ef24D080e41413'
+-AND token_address = '\xdbdb4d16eda451d0503b854cf79d55697f90c8df'
+-
+diff --git a/ethereum/ethereumnameservice/old_preimages.sql b/ethereum/ethereumnameservice/old_preimages.sql
+index 1600481..ecc8613 100644
+--- a/ethereum/ethereumnameservice/old_preimages.sql
++++ b/ethereum/ethereumnameservice/old_preimages.sql
+@@ -1,8 +1,8 @@
+-CREATE TABLE ethereumnameservice.old_preimages (
++CREATE TABLE IF NOT EXISTS ethereumnameservice.old_preimages (
+     name text,
+     hash bytea
+ );
+-
++TRUNCATE TABLE ethereumnameservice.old_preimages;
+ COPY ethereumnameservice.old_preimages (name, hash) FROM stdin;
+ holsberg	\\x83e77e69f3dd96e4845c9c2318969f648a7d86374fcd73ffaa64218892e64499
+ pccasegear	\\x35d20605db46e8c769d9cbc36f259ac01647cae0ea30373031ee2e87fd1a766d
+diff --git a/ethereum/ethereumnameservice/view_expirations.sql b/ethereum/ethereumnameservice/view_expirations.sql
+index a74275a..725f650 100644
+--- a/ethereum/ethereumnameservice/view_expirations.sql
++++ b/ethereum/ethereumnameservice/view_expirations.sql
+@@ -8,14 +8,14 @@ SELECT
+     count(*) AS count
+ FROM (
+     SELECT
+-        numeric2bytea(id) AS label,
++        numeric2bytea_old(id) AS label,
+         expires,
+         evt_block_time
+     FROM
+         ethereumnameservice. "BaseRegistrarImplementation_evt_NameRegistered"
+     UNION
+     SELECT
+-        numeric2bytea(id) AS label,
++        numeric2bytea_old(id) AS label,
+         expires,
+         evt_block_time
+     FROM
+diff --git a/ethereum/gnosis_protocol/view_balances.sql b/ethereum/gnosis_protocol/view_balances.sql
+index 27d090b..c192fb2 100644
+--- a/ethereum/gnosis_protocol/view_balances.sql
++++ b/ethereum/gnosis_protocol/view_balances.sql
+@@ -1,6 +1,7 @@
+ BEGIN;
+-DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol.view_balances;
+-CREATE MATERIALIZED VIEW gnosis_protocol.view_balances AS
++
++
++CREATE MATERIALIZED VIEW IF NOT EXISTS gnosis_protocol.view_balances AS
+ WITH
+ last_movement as (
+     SELECT 
+@@ -31,7 +32,7 @@ JOIN gnosis_protocol.view_movement movement
+ 
+ 
+ CREATE UNIQUE INDEX IF NOT EXISTS view_balances_id ON gnosis_protocol.view_balances (trader, token) ;
+-CREATE INDEX view_balances_1 ON gnosis_protocol.view_balances (token);
++CREATE INDEX IF NOT EXISTS view_balances_1 ON gnosis_protocol.view_balances (token);
+ 
+ INSERT INTO cron.job (schedule, command)
+ VALUES ('*/5 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_balances')
+diff --git a/ethereum/gnosis_protocol/view_daily_average_prices.sql b/ethereum/gnosis_protocol/view_daily_average_prices.sql
+index c025f99..6c437f2 100644
+--- a/ethereum/gnosis_protocol/view_daily_average_prices.sql
++++ b/ethereum/gnosis_protocol/view_daily_average_prices.sql
+@@ -1,6 +1,7 @@
+ BEGIN;
+-DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol.view_daily_average_prices;
+-CREATE MATERIALIZED VIEW gnosis_protocol.view_daily_average_prices AS
++
++
++CREATE MATERIALIZED VIEW IF NOT EXISTS gnosis_protocol.view_daily_average_prices AS
+ 
+ WITH
+ days as (
+@@ -43,8 +44,8 @@ SELECT
+ FROM daily_prices;
+ 
+ CREATE UNIQUE INDEX IF NOT EXISTS view_daily_average_prices_id ON gnosis_protocol.view_daily_average_prices (day, symbol) ;
+-CREATE INDEX view_daily_average_prices_1 ON gnosis_protocol.view_daily_average_prices (day);
+-CREATE INDEX view_daily_average_prices_2 ON gnosis_protocol.view_daily_average_prices (symbol);
++CREATE INDEX IF NOT EXISTS view_daily_average_prices_1 ON gnosis_protocol.view_daily_average_prices (day);
++CREATE INDEX IF NOT EXISTS view_daily_average_prices_2 ON gnosis_protocol.view_daily_average_prices (symbol);
+ 
+ INSERT INTO cron.job (schedule, command)
+ -- Every 6 hours.
+diff --git a/ethereum/gnosis_protocol/view_movement.sql b/ethereum/gnosis_protocol/view_movement.sql
+index ea515e6..c7410c8 100644
+--- a/ethereum/gnosis_protocol/view_movement.sql
++++ b/ethereum/gnosis_protocol/view_movement.sql
+@@ -1,6 +1,7 @@
+ BEGIN;
+-DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol.view_movement;
+-CREATE MATERIALIZED VIEW gnosis_protocol.view_movement AS
++
++
++CREATE MATERIALIZED VIEW IF NOT EXISTS gnosis_protocol.view_movement AS
+ WITH
+ deposits as (
+     SELECT
+@@ -211,9 +212,9 @@ FROM balances;
+ 
+ 
+ CREATE UNIQUE INDEX IF NOT EXISTS view_movement_id ON gnosis_protocol.view_movement (trader, batch_id, token) ;
+-CREATE INDEX view_movement_1 ON gnosis_protocol.view_movement (token_symbol);
+-CREATE INDEX view_movement_2 ON gnosis_protocol.view_movement (token);
+-CREATE INDEX view_movement_3 ON gnosis_protocol.view_movement (batch_id);
++CREATE INDEX IF NOT EXISTS view_movement_1 ON gnosis_protocol.view_movement (token_symbol);
++CREATE INDEX IF NOT EXISTS view_movement_2 ON gnosis_protocol.view_movement (token);
++CREATE INDEX IF NOT EXISTS view_movement_3 ON gnosis_protocol.view_movement (batch_id);
+ 
+ INSERT INTO cron.job (schedule, command)
+ VALUES ('*/5 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_movement')
+diff --git a/ethereum/gnosis_protocol/view_price_batch.sql b/ethereum/gnosis_protocol/view_price_batch.sql
+index e625260..3918072 100644
+--- a/ethereum/gnosis_protocol/view_price_batch.sql
++++ b/ethereum/gnosis_protocol/view_price_batch.sql
+@@ -1,6 +1,7 @@
+ BEGIN;
+-DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol.view_price_batch;
+-CREATE MATERIALIZED VIEW gnosis_protocol.view_price_batch AS
++
++
++CREATE MATERIALIZED VIEW IF NOT EXISTS gnosis_protocol.view_price_batch AS
+ WITH token_priorities AS (
+   SELECT * FROM (VALUES
+         (100, 7), -- DAI
+@@ -184,9 +185,9 @@ LEFT OUTER JOIN best_owl_price ON best_owl_price.batch_id = prices_in_usd.batch_
+ 
+ 
+ CREATE UNIQUE INDEX IF NOT EXISTS view_price_batch_id ON gnosis_protocol.view_price_batch (batch_id, token_id);
+-CREATE INDEX view_price_batch_idx_1 ON gnosis_protocol.view_price_batch (token_id);
+-CREATE INDEX view_price_batch_idx_2 ON gnosis_protocol.view_price_batch (symbol);
+-CREATE INDEX view_price_batch_idx_3 ON gnosis_protocol.view_price_batch (price_date);
++CREATE INDEX IF NOT EXISTS view_price_batch_idx_1 ON gnosis_protocol.view_price_batch (token_id);
++CREATE INDEX IF NOT EXISTS view_price_batch_idx_2 ON gnosis_protocol.view_price_batch (symbol);
++CREATE INDEX IF NOT EXISTS view_price_batch_idx_3 ON gnosis_protocol.view_price_batch (price_date);
+ 
+ INSERT INTO cron.job (schedule, command)
+ VALUES ('*/5 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_price_batch')
+diff --git a/ethereum/gnosis_protocol/view_tokens.sql b/ethereum/gnosis_protocol/view_tokens.sql
+index 6e612e0..e045df0 100644
+--- a/ethereum/gnosis_protocol/view_tokens.sql
++++ b/ethereum/gnosis_protocol/view_tokens.sql
+@@ -1,6 +1,7 @@
+ BEGIN;
+-DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol.view_tokens;
+-CREATE MATERIALIZED VIEW gnosis_protocol.view_tokens AS
++
++
++CREATE MATERIALIZED VIEW IF NOT EXISTS gnosis_protocol.view_tokens AS
+ WITH 
+ token_names as (
+     SELECT * FROM (VALUES
+@@ -41,8 +42,8 @@ UNION all (
+ );
+ 
+ CREATE UNIQUE INDEX IF NOT EXISTS view_tokens_id ON gnosis_protocol.view_tokens (token_id) ;
+-CREATE INDEX view_tokens_1 ON gnosis_protocol.view_tokens (symbol);
+-CREATE INDEX view_tokens_2 ON gnosis_protocol.view_tokens (token);
++CREATE INDEX IF NOT EXISTS view_tokens_1 ON gnosis_protocol.view_tokens (symbol);
++CREATE INDEX IF NOT EXISTS view_tokens_2 ON gnosis_protocol.view_tokens (token);
+ 
+ INSERT INTO cron.job (schedule, command)
+ VALUES ('*/5 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_tokens')
+diff --git a/ethereum/gnosis_protocol/view_trade_stats.sql b/ethereum/gnosis_protocol/view_trade_stats.sql
+index 65e8d4f..c8a4b3c 100644
+--- a/ethereum/gnosis_protocol/view_trade_stats.sql
++++ b/ethereum/gnosis_protocol/view_trade_stats.sql
+@@ -1,6 +1,7 @@
+ BEGIN;
+-DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol.view_trade_stats;
+-CREATE MATERIALIZED VIEW gnosis_protocol.view_trade_stats AS
++
++
++CREATE MATERIALIZED VIEW IF NOT EXISTS gnosis_protocol.view_trade_stats AS
+ WITH trades as (
+     SELECT 
+         trades.trade_date,
+@@ -69,11 +70,11 @@ LEFT OUTER JOIN decoded_analalytics decoded
+ 
+ 
+ CREATE UNIQUE INDEX IF NOT EXISTS view_trade_stats_id ON gnosis_protocol.view_trade_stats (batch_id, trader, order_id, trade_sub_id);
+-CREATE INDEX view_trade_stats_idx_1 ON gnosis_protocol.view_trade_stats (app_id);
+-CREATE INDEX view_trade_stats_idx_2 ON gnosis_protocol.view_trade_stats (trade_date);
++CREATE INDEX IF NOT EXISTS view_trade_stats_idx_1 ON gnosis_protocol.view_trade_stats (app_id);
++CREATE INDEX IF NOT EXISTS view_trade_stats_idx_2 ON gnosis_protocol.view_trade_stats (trade_date);
+ 
+ 
+ INSERT INTO cron.job (schedule, command)
+-VALUES ('*/10 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_trades')
++VALUES ('*/10 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_trade_stats')
+ ON CONFLICT (command) DO UPDATE SET schedule=EXCLUDED.schedule;
+ COMMIT;
+diff --git a/ethereum/gnosis_protocol/view_trades.sql b/ethereum/gnosis_protocol/view_trades.sql
+index 56a688c..b3dc85d 100644
+--- a/ethereum/gnosis_protocol/view_trades.sql
++++ b/ethereum/gnosis_protocol/view_trades.sql
+@@ -1,7 +1,8 @@
+ BEGIN;
+-DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol.view_trades;
+ 
+-CREATE MATERIALIZED VIEW gnosis_protocol.view_trades AS
++
++
++CREATE MATERIALIZED VIEW IF NOT EXISTS gnosis_protocol.view_trades AS
+ WITH reverts AS (
+ SELECT
+     reversion.owner,
+@@ -83,12 +84,12 @@ ORDER BY
+ 
+ 
+ CREATE UNIQUE INDEX IF NOT EXISTS view_trades_id ON gnosis_protocol.view_trades (batch_id, trader_hex, order_id, trade_sub_id);
+-CREATE INDEX view_trades_idx_1 ON gnosis_protocol.view_trades (trade_date);
+-CREATE INDEX view_trades_idx_2 ON gnosis_protocol.view_trades (sell_token_symbol);
+-CREATE INDEX view_trades_idx_3 ON gnosis_protocol.view_trades (sell_token);
+-CREATE INDEX view_trades_idx_4 ON gnosis_protocol.view_trades (buy_token_symbol);
+-CREATE INDEX view_trades_idx_5 ON gnosis_protocol.view_trades (buy_token);
+-CREATE INDEX view_trades_idx_6 ON gnosis_protocol.view_trades (trader_hex, order_id);
++CREATE INDEX IF NOT EXISTS view_trades_idx_1 ON gnosis_protocol.view_trades (trade_date);
++CREATE INDEX IF NOT EXISTS view_trades_idx_2 ON gnosis_protocol.view_trades (sell_token_symbol);
++CREATE INDEX IF NOT EXISTS view_trades_idx_3 ON gnosis_protocol.view_trades (sell_token);
++CREATE INDEX IF NOT EXISTS view_trades_idx_4 ON gnosis_protocol.view_trades (buy_token_symbol);
++CREATE INDEX IF NOT EXISTS view_trades_idx_5 ON gnosis_protocol.view_trades (buy_token);
++CREATE INDEX IF NOT EXISTS view_trades_idx_6 ON gnosis_protocol.view_trades (trader_hex, order_id);
+ 
+ 
+ 
+diff --git a/ethereum/gnosis_protocol_v2/batches.sql b/ethereum/gnosis_protocol_v2/batches.sql
+index 91ceec5..fbab6a4 100644
+--- a/ethereum/gnosis_protocol_v2/batches.sql
++++ b/ethereum/gnosis_protocol_v2/batches.sql
+@@ -1,4 +1,4 @@
+-CREATE TABLE gnosis_protocol_v2.batches
++CREATE TABLE IF NOT EXISTS gnosis_protocol_v2.batches
+ (
+     block_time      timestamptz NOT NULL,
+     num_trades      int8        NOT NULL,
+@@ -7,7 +7,7 @@ CREATE TABLE gnosis_protocol_v2.batches
+     gas_per_trade   numeric,
+     solver_address  bytea       NOT NULL,
+     solver_name     text,
+-    tx_hash         bytea       NOT NULL,
++    tx_hash         text        NOT NULL,
+     gas_price_gwei  float8,
+     gas_used        numeric,
+     tx_cost_usd     numeric,
+@@ -17,7 +17,7 @@ CREATE TABLE gnosis_protocol_v2.batches
+     token_approvals int8
+ );
+ 
+-CREATE UNIQUE INDEX IF NOT EXISTS batches_id ON gnosis_protocol_v2.view_batches (tx_hash);
+-CREATE INDEX batches_idx_1 ON gnosis_protocol_v2.view_batches (block_time);
+-CREATE INDEX batches_idx_2 ON gnosis_protocol_v2.view_batches (solver_address);
+-CREATE INDEX batches_idx_3 ON gnosis_protocol_v2.view_batches (num_trades);
+\ No newline at end of file
++CREATE UNIQUE INDEX IF NOT EXISTS batches_id ON gnosis_protocol_v2.batches (tx_hash);
++CREATE INDEX IF NOT EXISTS batches_idx_1 ON gnosis_protocol_v2.batches (block_time);
++CREATE INDEX IF NOT EXISTS batches_idx_2 ON gnosis_protocol_v2.batches (solver_address);
++CREATE INDEX IF NOT EXISTS batches_idx_3 ON gnosis_protocol_v2.batches (num_trades);
+\ No newline at end of file
+diff --git a/ethereum/gnosis_protocol_v2/insert_batches.sql b/ethereum/gnosis_protocol_v2/insert_batches.sql
+index 7d34338..ff932db 100644
+--- a/ethereum/gnosis_protocol_v2/insert_batches.sql
++++ b/ethereum/gnosis_protocol_v2/insert_batches.sql
+@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION gnosis_protocol_v2.insert_batches(start_ts timestampt
+ $function$
+ DECLARE
+     r integer;
+-BEGIN;
++BEGIN
+     WITH rows AS (
+         WITH batch_counts AS (
+             SELECT s.evt_block_time,
+@@ -46,7 +46,7 @@ BEGIN;
+                                OR name = 'ParaSwap'
+                                OR name = '0x'
+                                OR name = 'Legacy'
+-                               THEN (select count(*) from dex.trades where tx_hash = evt_tx_hash and category = 'DEX')
++                               THEN (select count(*) from dex.trades where tx_hash = evt_tx_hash::BYTEA and category = 'DEX')
+                            ELSE dex_swaps END                       as dex_swaps,
+                        batch_value,
+                        tx.gas_used / num_trades                     as gas_per_trade,
+@@ -125,15 +125,13 @@ WHERE NOT EXISTS(
+ -- This captures new batches since the previous run, but also includes
+ -- previously non-existent price data (since the price feed is slightly behind)
+ INSERT INTO cron.job (schedule, command)
+-VALUES ('*/5 * * * *', $$
+-    BEGIN;
++VALUES ('*/5 * * * *', 'BEGIN; DO $$ BEGIN
+     DELETE FROM gnosis_protocol_v2.batches
+-        WHERE block_time >= (SELECT DATE_TRUNC('day', now()) - INTERVAL '1 days');
+-    SELECT gnosis_protocol_v2.insert_batches(
+-        (SELECT DATE_TRUNC('day', now()) - INTERVAL '1 days')
+-    );
+-    COMMIT;
+-$$)
++        WHERE block_time >= (SELECT DATE_TRUNC(''day'', now()) - INTERVAL ''1 days'');
++    PERFORM gnosis_protocol_v2.insert_batches(
++        (SELECT DATE_TRUNC(''day'', now()) - INTERVAL ''1 days'')
++    ); END; $$; COMMIT;'
++)
+ ON CONFLICT (command) DO UPDATE SET schedule=EXCLUDED.schedule;
+ 
+ -- Once per day we go back 6 months repopulate the values.
+@@ -144,13 +142,11 @@ ON CONFLICT (command) DO UPDATE SET schedule=EXCLUDED.schedule;
+ -- NOTE that we choose to run this job daily at 11 minutes past midnight,
+ -- so not to compete with the every 5 minute job above and the updating trades table which this depends on.
+ INSERT INTO cron.job (schedule, command)
+-VALUES ('11 0 * * *', $$
+-    BEGIN;
++VALUES ('11 0 * * *', 'BEGIN; DO $$ BEGIN
+     DELETE FROM gnosis_protocol_v2.batches
+-        WHERE block_time >= (SELECT DATE_TRUNC('day', now()) - INTERVAL '6 months');
+-    SELECT gnosis_protocol_v2.insert_batches(
+-        (SELECT DATE_TRUNC('day', now()) - INTERVAL '6 months')
+-    );
+-    COMMIT;
+-$$)
++        WHERE block_time >= (SELECT DATE_TRUNC(''day'', now()) - INTERVAL ''6 months'');
++    PERFORM gnosis_protocol_v2.insert_batches(
++        (SELECT DATE_TRUNC(''day'', now()) - INTERVAL ''6 months'')
++    ); END; $$; COMMIT;'
++)
+ ON CONFLICT (command) DO UPDATE SET schedule=EXCLUDED.schedule;
+diff --git a/ethereum/gnosis_protocol_v2/insert_trades.sql b/ethereum/gnosis_protocol_v2/insert_trades.sql
+index 3aa52c6..30ac7cb 100644
+--- a/ethereum/gnosis_protocol_v2/insert_trades.sql
++++ b/ethereum/gnosis_protocol_v2/insert_trades.sql
+@@ -40,12 +40,12 @@ BEGIN
+                        owner,
+                        sell_token                    as sell_token_address,
+                        (CASE
+-                            WHEN s.symbol IS NULL THEN TEXT(sell_token)
++                            WHEN s.symbol IS NULL THEN sell_token::TEXT
+                             ELSE s.symbol
+                            END)                      as sell_token,
+                        buy_token                     as buy_token_address,
+                        (CASE
+-                            WHEN b.symbol IS NULL THEN TEXT(buy_token)
++                            WHEN b.symbol IS NULL THEN buy_token::TEXT
+                             ELSE b.symbol
+                            END)                      as buy_token,
+                        sell_amount / 10 ^ s.decimals as units_sold,
+diff --git a/ethereum/gnosis_protocol_v2/trades.sql b/ethereum/gnosis_protocol_v2/trades.sql
+index 1ea6aa9..c6f3740 100644
+--- a/ethereum/gnosis_protocol_v2/trades.sql
++++ b/ethereum/gnosis_protocol_v2/trades.sql
+@@ -1,4 +1,4 @@
+-CREATE TABLE gnosis_protocol_v2.trades
++CREATE TABLE IF NOT EXISTS gnosis_protocol_v2.trades
+ (
+     app_data           text,
+     atoms_bought       numeric     NOT NULL,
+@@ -19,15 +19,15 @@ CREATE TABLE gnosis_protocol_v2.trades
+     sell_value_usd     numeric,
+     trader             bytea       NOT NULL,
+     trade_value_usd    numeric,
+-    tx_hash            bytea       NOT NULL,
++    tx_hash            text        NOT NULL,
+     units_bought       numeric,
+     units_sold         numeric
+ );
+ 
+ CREATE UNIQUE INDEX IF NOT EXISTS trades_id ON gnosis_protocol_v2.trades (order_uid, tx_hash);
+-CREATE INDEX trades_idx_1 ON gnosis_protocol_v2.trades (block_time);
+-CREATE INDEX trades_idx_2 ON gnosis_protocol_v2.trades (sell_token_address);
+-CREATE INDEX trades_idx_3 ON gnosis_protocol_v2.trades (buy_token_address);
+-CREATE INDEX trades_idx_4 ON gnosis_protocol_v2.trades (trader);
+-CREATE INDEX trades_idx_5 ON gnosis_protocol_v2.trades (app_data);
+-CREATE INDEX trades_idx_6 ON gnosis_protocol_v2.trades (tx_hash);
++CREATE INDEX IF NOT EXISTS trades_idx_1 ON gnosis_protocol_v2.trades (block_time);
++CREATE INDEX IF NOT EXISTS trades_idx_2 ON gnosis_protocol_v2.trades (sell_token_address);
++CREATE INDEX IF NOT EXISTS trades_idx_3 ON gnosis_protocol_v2.trades (buy_token_address);
++CREATE INDEX IF NOT EXISTS trades_idx_4 ON gnosis_protocol_v2.trades (trader);
++CREATE INDEX IF NOT EXISTS trades_idx_5 ON gnosis_protocol_v2.trades (app_data);
++CREATE INDEX IF NOT EXISTS trades_idx_6 ON gnosis_protocol_v2.trades (tx_hash);
+diff --git a/ethereum/gnosis_protocol_v2/view_batches.sql b/ethereum/gnosis_protocol_v2/view_batches.sql
+index 6f56989..d5fe484 100644
+--- a/ethereum/gnosis_protocol_v2/view_batches.sql
++++ b/ethereum/gnosis_protocol_v2/view_batches.sql
+@@ -1,7 +1,6 @@
+ BEGIN;
+-DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol_v2.view_batches;
+ 
+-CREATE MATERIALIZED VIEW gnosis_protocol_v2.view_batches AS
++CREATE MATERIALIZED VIEW IF NOT EXISTS gnosis_protocol_v2.view_batches AS
+ WITH batch_counts AS (
+     SELECT s.evt_block_time,
+            s.evt_tx_hash,
+@@ -39,7 +38,7 @@ WITH batch_counts AS (
+                         OR name = 'ParaSwap'
+                         OR name = '0x'
+                         OR name = 'Legacy'
+-                        THEN (select count(*) from dex.trades where tx_hash = evt_tx_hash and category = 'DEX')
++                        THEN (select count(*) from dex.trades where tx_hash = evt_tx_hash::BYTEA and category = 'DEX')
+                     ELSE dex_swaps END                       as dex_swaps,
+                 batch_value,
+                 tx.gas_used / num_trades                     as gas_per_trade,
+@@ -70,9 +69,9 @@ ORDER BY block_time DESC;
+ 
+ 
+ CREATE UNIQUE INDEX IF NOT EXISTS view_batches_id ON gnosis_protocol_v2.view_batches (tx_hash);
+-CREATE INDEX view_batches_idx_1 ON gnosis_protocol_v2.view_batches (block_time);
+-CREATE INDEX view_batches_idx_2 ON gnosis_protocol_v2.view_batches (solver_address);
+-CREATE INDEX view_batches_idx_3 ON gnosis_protocol_v2.view_batches (num_trades);
++CREATE INDEX IF NOT EXISTS view_batches_idx_1 ON gnosis_protocol_v2.view_batches (block_time);
++CREATE INDEX IF NOT EXISTS view_batches_idx_2 ON gnosis_protocol_v2.view_batches (solver_address);
++CREATE INDEX IF NOT EXISTS view_batches_idx_3 ON gnosis_protocol_v2.view_batches (num_trades);
+ 
+ 
+ INSERT INTO cron.job (schedule, command)
+diff --git a/ethereum/gnosis_protocol_v2/view_solvers.sql b/ethereum/gnosis_protocol_v2/view_solvers.sql
+index ee522dd..c39e111 100644
+--- a/ethereum/gnosis_protocol_v2/view_solvers.sql
++++ b/ethereum/gnosis_protocol_v2/view_solvers.sql
+@@ -1,12 +1,12 @@
+-BEGIN;
+-DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol_v2.view_batches; -- due to downstream dependency, drop view_batches -- remember to rebuild after this script!
+-COMMIT;
+-BEGIN;
+-DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol_v2.view_solvers;
+-COMMIT;
++--BEGIN;
++--DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol_v2.view_batches; -- due to downstream dependency, drop view_batches -- remember to rebuild after this script!
++--COMMIT;
++--BEGIN;
++--DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol_v2.view_solvers;
++--COMMIT;
+ 
+ BEGIN;
+-CREATE MATERIALIZED VIEW gnosis_protocol_v2.view_solvers (address, environment, name, active) AS
++CREATE MATERIALIZED VIEW IF EXISTS NOT gnosis_protocol_v2.view_solvers (address, environment, name, active) AS
+ WITH
+ -- Aggregate the solver added and removed events into a single table
+ -- with true/false for adds/removes respectively
+diff --git a/ethereum/gnosis_safe/view_safes.sql b/ethereum/gnosis_safe/view_safes.sql
+index 42e93b6..d7acd13 100644
+--- a/ethereum/gnosis_safe/view_safes.sql
++++ b/ethereum/gnosis_safe/view_safes.sql
+@@ -1,25 +1,25 @@
+ BEGIN;
+-DROP MATERIALIZED VIEW IF EXISTS gnosis_safe.view_safes;
++--DROP MATERIALIZED VIEW IF EXISTS gnosis_safe.view_safes;
+ 
+-CREATE MATERIALIZED VIEW gnosis_safe.view_safes AS
++CREATE MATERIALIZED VIEW IF NOT EXISTS gnosis_safe.view_safes AS
+     SELECT
+-    	et.from AS address,
++       et.from::BYTEA AS address,
+     	et.block_time AS creation_time
+     FROM ethereum.traces et 
+     WHERE et.success = True
+         AND et.call_type = 'delegatecall' -- The delegate call to the master copy is the Safe address
+         AND (
+             (substring(et."input" for 4) = '\x0ec78d9e' -- setup methods of v0.1.0
+-                AND et."to" = '\x8942595A2dC5181Df0465AF0D7be08c8f23C93af') -- mastercopy v0.1.0
++                AND et."to" = '0x8942595A2dC5181Df0465AF0D7be08c8f23C93af') -- mastercopy v0.1.0
+             OR
+             (substring(et."input" for 4) = '\xa97ab18a' -- setup methods of v1.0.0
+-                AND et."to" = '\xb6029ea3b2c51d09a50b53ca8012feeb05bda35a') -- mastercopy v1.0.0
++                AND et."to" = '0xb6029ea3b2c51d09a50b53ca8012feeb05bda35a') -- mastercopy v1.0.0
+             OR
+             (substring(et."input" for 4) = '\xb63e800d' -- setup methods of v1.1.0, v1.1.1, 1.2.0
+             AND et."to" IN (
+-                '\xae32496491b53841efb51829d6f886387708f99b',  -- mastercopy v1.1.0
+-                '\x34cfac646f301356faa8b21e94227e3583fe3f5f',  -- mastercopy v1.1.1
+-                '\x6851d6fdfafd08c0295c392436245e5bc78b0185')  -- mastercopy v1.2.0
++                '0xae32496491b53841efb51829d6f886387708f99b',  -- mastercopy v1.1.0
++                '0x34cfac646f301356faa8b21e94227e3583fe3f5f',  -- mastercopy v1.1.1
++                '0x6851d6fdfafd08c0295c392436245e5bc78b0185')  -- mastercopy v1.2.0
+             )
+         )
+         AND gas_used > 0  -- to ensure the setup call was successful
+@@ -29,7 +29,7 @@ CREATE MATERIALIZED VIEW gnosis_safe.view_safes AS
+     SELECT contract_address AS address, evt_block_time AS creation_time
+     FROM gnosis_safe."GnosisSafev1.3.0_evt_SafeSetup";
+ COMMIT;
+-CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS view_safes_unique_idx ON gnosis_safe.view_safes (address);
++CREATE UNIQUE INDEX IF NOT EXISTS view_safes_unique_idx ON gnosis_safe.view_safes (address);
+ 
+ -- INSERT INTO cron.job (schedule, command)
+ -- VALUES ('0 0 * * *', $$REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_safe.view_safes$$)
+diff --git a/ethereum/keep3r_network/job_data.sql b/ethereum/keep3r_network/job_data.sql
+index c4b7e32..d5e7adb 100644
+--- a/ethereum/keep3r_network/job_data.sql
++++ b/ethereum/keep3r_network/job_data.sql
+@@ -1,4 +1,4 @@
+-CREATE TABLE keep3r_network.job_data (
++CREATE TABLE IF NOT EXISTS keep3r_network.job_data (
+     job,
+     job_name
+ ) AS
+diff --git a/ethereum/keep3r_network/klp_data.sql b/ethereum/keep3r_network/klp_data.sql
+index 9887c37..0e3f01b 100644
+--- a/ethereum/keep3r_network/klp_data.sql
++++ b/ethereum/keep3r_network/klp_data.sql
+@@ -1,4 +1,4 @@
+-CREATE TABLE keep3r_network.klp_data (
++CREATE TABLE IF NOT EXISTS keep3r_network.klp_data (
+     liquidity,
+     token_0,
+     token_1
+diff --git a/ethereum/keep3r_network/token_data.sql b/ethereum/keep3r_network/token_data.sql
+index 41cc527..09236af 100644
+--- a/ethereum/keep3r_network/token_data.sql
++++ b/ethereum/keep3r_network/token_data.sql
+@@ -1,4 +1,4 @@
+-CREATE TABLE keep3r_network.token_data (
++CREATE TABLE IF NOT EXISTS keep3r_network.token_data (
+     address,
+     symbol
+ ) AS
+diff --git a/ethereum/keep3r_network/type_credits_accountance.sql b/ethereum/keep3r_network/type_credits_accountance.sql
+index 3704ad5..79fa8cb 100644
+--- a/ethereum/keep3r_network/type_credits_accountance.sql
++++ b/ethereum/keep3r_network/type_credits_accountance.sql
+@@ -1,3 +1,4 @@
++DO $$ BEGIN
+ CREATE TYPE keep3r_network.type_credits_accountance AS (
+     timestamp TIMESTAMP,
+     evt_index INTEGER,
+@@ -6,3 +7,6 @@ CREATE TYPE keep3r_network.type_credits_accountance AS (
+     amount float,
+     period_credits float
+ );
++EXCEPTION
++    WHEN duplicate_object THEN null;
++END $$;
+diff --git a/ethereum/keep3r_network/view_job_credits_log.sql b/ethereum/keep3r_network/view_job_credits_log.sql
+index 43c4f6e..9094549 100644
+--- a/ethereum/keep3r_network/view_job_credits_log.sql
++++ b/ethereum/keep3r_network/view_job_credits_log.sql
+@@ -2,7 +2,7 @@ CREATE OR REPLACE VIEW keep3r_network.view_job_credits_log AS (
+ 	WITH work_evt AS (
+ 		
+ 				SELECT evt_block_time AS timestamp,
+-					'0x' || encode(evt_tx_hash, 'hex') AS tx_hash,
++					evt_tx_hash AS tx_hash,
+ 					evt_index,
+ 					'KeeperWork' AS event,
+ 					'0x' || encode(contract_address, 'hex') AS keep3r,
+@@ -21,7 +21,7 @@ CREATE OR REPLACE VIEW keep3r_network.view_job_credits_log AS (
+ 			),
+ 			reward_evt AS (
+ 				SELECT to_timestamp("_rewardedAt") AS timestamp,
+-					'0x' || encode(evt_tx_hash, 'hex') AS tx_hash,
++					evt_tx_hash AS tx_hash,
+ 					evt_index,
+ 					'CreditsReward' AS event,
+ 					'0x' || encode(contract_address, 'hex') AS keep3r,
+diff --git a/ethereum/keep3r_network/view_job_liquidity_log.sql b/ethereum/keep3r_network/view_job_liquidity_log.sql
+index 5aa5da6..ae1959c 100644
+--- a/ethereum/keep3r_network/view_job_liquidity_log.sql
++++ b/ethereum/keep3r_network/view_job_liquidity_log.sql
+@@ -2,7 +2,7 @@ CREATE OR REPLACE VIEW keep3r_network.view_job_liquidity_log AS (
+     WITH job_liquidities AS (
+         SELECT
+             ad. "evt_block_time" AS TIMESTAMP,
+-            '0x' || encode(ad. "evt_tx_hash", 'hex') AS tx_hash,
++            evt_tx_hash AS tx_hash,
+             evt_index,
+             'LiquidityAddition' AS event,
+             '0x' || encode(ad. "contract_address", 'hex') keep3r,
+@@ -23,7 +23,7 @@ CREATE OR REPLACE VIEW keep3r_network.view_job_liquidity_log AS (
+         UNION ALL
+         SELECT
+             rm. "evt_block_time" AS TIMESTAMP,
+-            '0x' || encode(rm. "evt_tx_hash", 'hex') AS tx_hash,
++            evt_tx_hash AS tx_hash,
+             evt_index,
+             'LiquidityWithdrawal' AS event,
+             '0x' || encode(rm. "contract_address", 'hex') keep3r,
+diff --git a/ethereum/keep3r_network/view_job_migrations.sql b/ethereum/keep3r_network/view_job_migrations.sql
+index f191ff5..d1e4ed1 100644
+--- a/ethereum/keep3r_network/view_job_migrations.sql
++++ b/ethereum/keep3r_network/view_job_migrations.sql
+@@ -1,7 +1,7 @@
+ CREATE OR REPLACE VIEW keep3r_network.view_job_migrations AS (
+     SELECT
+         evt_block_time AS timestamp,
+-        '0x' || encode(evt_tx_hash, 'hex') AS tx_hash,
++        evt_tx_hash AS tx_hash,
+         evt_index + s.step AS evt_index,
+         CASE s.step
+         WHEN (0) THEN
+diff --git a/ethereum/keep3r_network/view_work_tx.sql b/ethereum/keep3r_network/view_work_tx.sql
+index b28ee67..40dab6f 100644
+--- a/ethereum/keep3r_network/view_work_tx.sql
++++ b/ethereum/keep3r_network/view_work_tx.sql
+@@ -26,8 +26,8 @@ CREATE OR REPLACE VIEW keep3r_network.view_work_tx as (
+           ) as numeric
+         ) unix_timestamp
+       from work_txs w
+-        INNER JOIN ethereum.transactions tx on w.tx_hash = tx.hash
+-        INNER JOIN ethereum.blocks b on tx.block_number = b.number
++      LEFT JOIN ethereum.transactions tx on w.tx_hash = tx.hash
++      LEFT JOIN ethereum.blocks b on tx.block_number = b.number
+     ),
+     base_fee_by_time AS (
+       SELECT date_trunc('hour', time) AS timestamp,
+@@ -36,7 +36,7 @@ CREATE OR REPLACE VIEW keep3r_network.view_work_tx as (
+       GROUP BY timestamp
+     )
+     select timestamp,
+-    '0x' || encode(tx_hash, 'hex') as tx_hash,
++      tx_hash,
+       'WorkTx' as event,
+       keep3r,
+       job,
+diff --git a/ethereum/larvalabs/crypto_punks_attributes.sql b/ethereum/larvalabs/crypto_punks_attributes.sql
+index 8475210..98c5b82 100644
+--- a/ethereum/larvalabs/crypto_punks_attributes.sql
++++ b/ethereum/larvalabs/crypto_punks_attributes.sql
+@@ -10007,4 +10007,5 @@ VALUES
+ ('9996','Male','4','{"Cigarette","Earring","Crazy Hair","Smile"}'),
+ ('9997','Zombie','2','{"Front Beard","Cap Forward"}'),
+ ('9998','Female','3','{"Wild White Hair","Black Lipstick","Clown Eyes Green"}'),
+-('9999','Female','2','{"Mohawk","Nerd Glasses"}');
++('9999','Female','2','{"Mohawk","Nerd Glasses"}')
++ON CONFLICT DO NOTHING;
+diff --git a/ethereum/llama/llama_treasury_addresses.sql b/ethereum/llama/llama_treasury_addresses.sql
+index 7c92208..3dfdd7f 100644
+--- a/ethereum/llama/llama_treasury_addresses.sql
++++ b/ethereum/llama/llama_treasury_addresses.sql
+@@ -2,7 +2,7 @@ CREATE SCHEMA IF NOT EXISTS llama;
+ 
+ CREATE TABLE IF NOT EXISTS llama.llama_treasury_addresses (
+ 	protocol text,
+-	address bytea UNIQUE,
++	address text UNIQUE,
+ 	version text,
+ 	blockchain text,
+ 	tags text
+@@ -16,10 +16,10 @@ DELETE FROM llama.llama_treasury_addresses *;
+ --Aave Treasury
+ --Aave Polygon revenue
+ COPY llama.llama_treasury_addresses (protocol,address,version,blockchain,tags) FROM stdin;
+-Aave	\\xe3d9988f676457123c5fd01297605efdd0cba1ae	V1	Ethereum	\N
+-Aave	\\x464c71f6c2f760dda6093dcb91c24c39e5d6e18c	V2	Ethereum	\N
+-Aave	\\x25F2226B597E8F9514B3F68F00f494cF4f286491	Ecosystem Reserve	Ethereum	Treasury
+-Aave	\\x7734280A4337F37Fbf4651073Db7c28C80B339e9	MATIC	Polygon	\N
++Aave	0xe3d9988f676457123c5fd01297605efdd0cba1ae	V1	Ethereum	\N
++Aave	0x464c71f6c2f760dda6093dcb91c24c39e5d6e18c	V2	Ethereum	\N
++Aave	0x25F2226B597E8F9514B3F68F00f494cF4f286491	Ecosystem Reserve	Ethereum	Treasury
++Aave	0x7734280A4337F37Fbf4651073Db7c28C80B339e9	MATIC	Polygon	\N
+ \.
+ 
+ 
+diff --git a/ethereum/loopring/fn_decode_float_16.sql b/ethereum/loopring/fn_decode_float_16.sql
+index c702beb..00e41ca 100644
+--- a/ethereum/loopring/fn_decode_float_16.sql
++++ b/ethereum/loopring/fn_decode_float_16.sql
+@@ -1,4 +1,3 @@
+-DROP FUNCTION loopring.fn_decode_float_16;
+ 
+ CREATE OR REPLACE FUNCTION loopring.fn_decode_float_16(data bytea) RETURNS double precision AS $$
+ DECLARE
+diff --git a/ethereum/loopring/fn_decode_float_24.sql b/ethereum/loopring/fn_decode_float_24.sql
+index 4c96164..b430070 100644
+--- a/ethereum/loopring/fn_decode_float_24.sql
++++ b/ethereum/loopring/fn_decode_float_24.sql
+@@ -1,4 +1,3 @@
+-DROP FUNCTION loopring.fn_decode_float_24;
+ 
+ CREATE OR REPLACE FUNCTION loopring.fn_decode_float_24(data bytea) RETURNS double precision AS $$
+ DECLARE
+diff --git a/ethereum/loopring/fn_process_block_v2.sql b/ethereum/loopring/fn_process_block_v2.sql
+index 8bcd81e..8213255 100644
+--- a/ethereum/loopring/fn_process_block_v2.sql
++++ b/ethereum/loopring/fn_process_block_v2.sql
+@@ -1,21 +1,16 @@
+-DROP FUNCTION loopring.fn_process_block_v2;
+-
+-DROP TYPE loopring.transaction_struct;
+-DROP TYPE loopring.deposit_struct;
+-DROP TYPE loopring.withdraw_struct;
+-DROP TYPE loopring.transfer_struct;
+-DROP TYPE loopring.spot_trade_struct;
+-DROP TYPE loopring.account_update_struct;
+-DROP TYPE loopring.amm_update_struct;
+-DROP TYPE loopring.signature_verification_struct;
+ 
++DO $$ BEGIN
+ CREATE TYPE loopring.deposit_struct AS (
+     toAddress bytea,
+     toAccount numeric,
+     token numeric,
+     amount double precision
+ );
++EXCEPTION
++    WHEN duplicate_object THEN null;
++END $$;
+ 
++DO $$ BEGIN
+ CREATE TYPE loopring.withdraw_struct AS (
+     fromAddress bytea,
+     fromAccount numeric,
+@@ -24,7 +19,11 @@ CREATE TYPE loopring.withdraw_struct AS (
+     feeToken numeric,
+     fee double precision
+ );
++EXCEPTION
++    WHEN duplicate_object THEN null;
++END $$;
+ 
++DO $$ BEGIN
+ CREATE TYPE loopring.transfer_struct AS (
+     token numeric,
+     amount double precision,
+@@ -35,7 +34,11 @@ CREATE TYPE loopring.transfer_struct AS (
+     toAddress bytea,
+     fromAddress bytea
+ );
++EXCEPTION
++    WHEN duplicate_object THEN null;
++END $$;
+ 
++DO $$ BEGIN
+ CREATE TYPE loopring.spot_trade_struct AS (
+     accountA numeric,
+     accountB numeric,
+@@ -44,7 +47,11 @@ CREATE TYPE loopring.spot_trade_struct AS (
+     amountA double precision,
+     amountB double precision
+ );
++EXCEPTION
++    WHEN duplicate_object THEN null;
++END $$;
+ 
++DO $$ BEGIN
+ CREATE TYPE loopring.account_update_struct AS (
+     ownerAddress bytea,
+     ownerAccount numeric,
+@@ -52,7 +59,11 @@ CREATE TYPE loopring.account_update_struct AS (
+     fee double precision,
+     publicKey bytea
+ );
++EXCEPTION
++    WHEN duplicate_object THEN null;
++END $$;
+ 
++DO $$ BEGIN
+ CREATE TYPE loopring.amm_update_struct AS (
+     ownerAddress bytea,
+     ownerAccount numeric,
+@@ -60,12 +71,20 @@ CREATE TYPE loopring.amm_update_struct AS (
+     feeBips numeric,
+     weight double precision
+ );
++EXCEPTION
++    WHEN duplicate_object THEN null;
++END $$;
+ 
++DO $$ BEGIN
+ CREATE TYPE loopring.signature_verification_struct AS (
+     ownerAddress bytea,
+     ownerAccount numeric
+ );
++EXCEPTION
++    WHEN duplicate_object THEN null;
++END $$;
+ 
++DO $$ BEGIN
+ CREATE TYPE loopring.transaction_struct AS (
+     block_timestamp timestamptz,
+     blockIdx integer,
+@@ -79,6 +98,9 @@ CREATE TYPE loopring.transaction_struct AS (
+     amm_update loopring.amm_update_struct,
+     signature_verification loopring.signature_verification_struct
+ );
++EXCEPTION
++    WHEN duplicate_object THEN null;
++END $$;
+ 
+ 
+ CREATE OR REPLACE FUNCTION loopring.fn_process_block_v2(blockSize integer, _data bytea, block_timestamp timestamptz, blockIdx integer)
+diff --git a/ethereum/loopring/fn_process_trade_block_v1.sql b/ethereum/loopring/fn_process_trade_block_v1.sql
+index d9baa37..fc40241 100644
+--- a/ethereum/loopring/fn_process_trade_block_v1.sql
++++ b/ethereum/loopring/fn_process_trade_block_v1.sql
+@@ -1,7 +1,5 @@
+-DROP FUNCTION loopring.fn_process_trade_block_v1;
+-
+-DROP TYPE loopring.trade_struct;
+ 
++DO $$ BEGIN
+ CREATE TYPE loopring.trade_struct AS (
+     block_timestamp timestamptz,
+     tokenA integer,
+@@ -13,6 +11,9 @@ CREATE TYPE loopring.trade_struct AS (
+     protocolFeeTakerBips double precision,
+     protocolFeeMakerBips double precision
+ );
++EXCEPTION
++    WHEN duplicate_object THEN null;
++END $$;
+ 
+ CREATE OR REPLACE FUNCTION loopring.fn_process_trade_block_v1 (blockSize integer, data bytea, block_timestamp timestamptz)
+     RETURNS SETOF loopring.trade_struct
+diff --git a/ethereum/nft/nft_wallets.sql b/ethereum/nft/nft_wallets.sql
+index 498ef27..df12fd0 100644
+--- a/ethereum/nft/nft_wallets.sql
++++ b/ethereum/nft/nft_wallets.sql
+@@ -2,12 +2,11 @@ BEGIN;
+ 
+ CREATE SCHEMA IF NOT EXISTS nftwallets;
+ 
+-DROP TABLE nftwallets.opensea_users;
+-
+ CREATE TABLE IF NOT EXISTS nftwallets.opensea_users (
+ 	nft_wallet	BYTEA PRIMARY KEY,
+ 	opensea_user	TEXT
+ );
++TRUNCATE TABLE nftwallets.opensea_users;
+ 
+ COPY nftwallets.opensea_users (nft_wallet, opensea_user) FROM stdin; 
+ \\xe301612b0751f6d862a27be205fb8e3c40c8c6db	'----------------------'
+diff --git a/ethereum/nft/trades/insert_LooksRare.sql b/ethereum/nft/trades/insert_LooksRare.sql
+index b915bd9..55832ec 100644
+--- a/ethereum/nft/trades/insert_LooksRare.sql
++++ b/ethereum/nft/trades/insert_LooksRare.sql
+@@ -197,10 +197,6 @@ ROWS AS (
+             
+         FROM looks_rare) trades
+     INNER JOIN ethereum.transactions tx ON trades.tx_hash = tx.hash
+-        AND tx.block_time >= start_ts
+-        AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN looksrare_erc_subsets erc ON erc.evt_tx_hash = trades.tx_hash
+     LEFT JOIN nft.tokens tokens ON tokens.contract_address = trades.nft_contract_address
+     LEFT JOIN prices.usd p ON p.minute = date_trunc('minute', trades.block_time)
+diff --git a/ethereum/nft/trades/insert_cryptopunks.sql b/ethereum/nft/trades/insert_cryptopunks.sql
+index 20beba9..0e5b8a8 100644
+--- a/ethereum/nft/trades/insert_cryptopunks.sql
++++ b/ethereum/nft/trades/insert_cryptopunks.sql
+@@ -148,12 +148,7 @@ rows AS (
+                 'Trade' AS evt_type,
+                 *
+             FROM punks_agg_tx) trades
+-    INNER JOIN ethereum.transactions tx
+-        ON trades.evt_tx_hash = tx.hash
+-        AND tx.block_time >= start_ts
+-        AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
++    INNER JOIN ethereum.transactions tx ON trades.evt_tx_hash = tx.hash
+     LEFT JOIN prices.usd p ON p.minute = date_trunc('minute', trades.evt_block_time)
+         AND p.contract_address = '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+         AND p.minute >= start_ts
+diff --git a/ethereum/nft/trades/insert_foundation.sql b/ethereum/nft/trades/insert_foundation.sql
+index f84ef96..752b50e 100644
+--- a/ethereum/nft/trades/insert_foundation.sql
++++ b/ethereum/nft/trades/insert_foundation.sql
+@@ -129,12 +129,7 @@ rows AS (
+             'Trade' AS evt_type,
+             *
+         FROM foundation."market_evt_ReserveAuctionFinalized") trades
+-    INNER JOIN ethereum.transactions tx
+-        ON trades.evt_tx_hash = tx.hash
+-        AND tx.block_time >= start_ts
+-        AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
++    INNER JOIN ethereum.transactions tx ON trades.evt_tx_hash = tx.hash
+     LEFT JOIN foundation_erc_subsets erc ON erc.evt_tx_hash = trades.evt_tx_hash
+     LEFT JOIN foundation."market_evt_ReserveAuctionCreated" created ON trades."auctionId" = created."auctionId"
+     LEFT JOIN nft.tokens tokens ON tokens.contract_address = created."nftContract"
+diff --git a/ethereum/nft/trades/insert_opensea.sql b/ethereum/nft/trades/insert_opensea.sql
+index b6f4d62..3a53e94 100644
+--- a/ethereum/nft/trades/insert_opensea.sql
++++ b/ethereum/nft/trades/insert_opensea.sql
+@@ -160,12 +160,7 @@ rows AS (
+             evt_block_number,
+             evt_index
+         FROM opensea."WyvernExchange_evt_OrdersMatched") trades
+-    INNER JOIN ethereum.transactions tx
+-        ON trades.evt_tx_hash = tx.hash
+-        AND tx.block_time >= start_ts
+-        AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
++    INNER JOIN ethereum.transactions tx ON trades.evt_tx_hash = tx.hash
+     LEFT JOIN opensea_erc_subsets erc ON erc.evt_tx_hash = trades.evt_tx_hash
+     LEFT JOIN wyvern_calldata wc ON wc.call_tx_hash = trades.evt_tx_hash
+     LEFT JOIN nft.tokens tokens ON tokens.contract_address = wc.nft_contract_address
+diff --git a/ethereum/nft/trades/insert_rarible.sql b/ethereum/nft/trades/insert_rarible.sql
+index 8830684..c9f609a 100644
+--- a/ethereum/nft/trades/insert_rarible.sql
++++ b/ethereum/nft/trades/insert_rarible.sql
+@@ -352,12 +352,7 @@ rows AS (
+         row_number() OVER (PARTITION BY platform, trades.evt_tx_hash, trades.evt_index, category ORDER BY platform_version, evt_type) AS trade_id
+     FROM
+         rarible_trades trades
+-    INNER JOIN ethereum.transactions tx
+-        ON trades.evt_tx_hash = tx.hash
+-        AND tx.block_time >= start_ts
+-        AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
++    INNER JOIN ethereum.transactions tx ON trades.evt_tx_hash = tx.hash
+     LEFT JOIN rarible_erc_subsets erc ON erc.evt_tx_hash = trades.evt_tx_hash
+     LEFT JOIN erc20.tokens erc20 ON erc20.contract_address = trades.currency_contract
+     LEFT JOIN nft.tokens tokens ON tokens.contract_address = trades.nft_contract_address
+diff --git a/ethereum/nft/trades/insert_superrare.sql b/ethereum/nft/trades/insert_superrare.sql
+index 3813b1e..8cd1eb8 100644
+--- a/ethereum/nft/trades/insert_superrare.sql
++++ b/ethereum/nft/trades/insert_superrare.sql
+@@ -301,12 +301,7 @@ rows AS (
+         row_number() OVER (PARTITION BY platform, trades.tx_hash, trades.evt_index, category ORDER BY platform_version, evt_type) AS trade_id
+     FROM
+ 	superrare_trades trades
+-    INNER JOIN ethereum.transactions tx
+-        ON trades.tx_hash = tx.hash
+-        AND tx.block_time >= start_ts
+-        AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
++    INNER JOIN ethereum.transactions tx ON trades.tx_hash = tx.hash
+     LEFT JOIN superrare_erc_subsets erc ON erc.evt_tx_hash = trades.tx_hash
+     LEFT JOIN prices.usd p ON p.minute = date_trunc('minute', trades.block_time)
+         AND p.contract_address = '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
+diff --git a/ethereum/nft_traits/apedao_remix_traits.sql b/ethereum/nft_traits/apedao_remix_traits.sql
+index 9d73ace..3dea710 100644
+--- a/ethereum/nft_traits/apedao_remix_traits.sql
++++ b/ethereum/nft_traits/apedao_remix_traits.sql
+@@ -1,7 +1,12 @@
+ BEGIN;
+ CREATE SCHEMA IF NOT EXISTS apedao;
+ 
+-CREATE TYPE apedao.apedao_remix_tier AS ENUM ('basic', 'silver', 'gold');
++DO $$ BEGIN
++    CREATE TYPE apedao.apedao_remix_tier AS ENUM ('basic', 'silver', 'gold');
++EXCEPTION
++    WHEN duplicate_object THEN null;
++END $$;
++
+ CREATE TABLE IF NOT EXISTS apedao.apedao_remix_traits (
+     token_id smallint NOT NULL PRIMARY KEY,
+     artist text NOT NULL,
+@@ -5560,7 +5565,8 @@ VALUES
+ (4, 'lurklovesyou', 'basic', 2449),
+ (3, 'lurklovesyou', 'basic', 5148),
+ (2, 'Kyokill', 'basic', 6516),
+-(1, 'ytopp', 'silver', 5145);
++(1, 'ytopp', 'silver', 5145)
++ON CONFLICT DO NOTHING;
+ 
+ CREATE INDEX IF NOT EXISTS apedao_remix_artist_idx ON apedao.apedao_remix_traits (artist);
+ CREATE INDEX IF NOT EXISTS apedao_remix_tier_idx ON apedao.apedao_remix_traits (tier);
+diff --git a/ethereum/nft_traits/bucketsclub.sql b/ethereum/nft_traits/bucketsclub.sql
+index b19a205..5f04cbf 100644
+--- a/ethereum/nft_traits/bucketsclub.sql
++++ b/ethereum/nft_traits/bucketsclub.sql
+@@ -1,6 +1,8 @@
+ BEGIN;
+ CREATE SCHEMA IF NOT EXISTS bucketsclub;
+ 
++DROP TABLE IF EXISTS bucketsclub.body;
++
+ CREATE TABLE IF NOT EXISTS bucketsclub.body (
+     body_type VARCHAR(90),
+     os_link VARCHAR(90),
+@@ -1007,7 +1009,8 @@ VALUES
+     ('Greyson Buckets','https://opensea.io/assets/0x025f45bb7e08abea27a3c6a9cfb8d2acc2f6a134/13',13),
+     ('Lyle Scott Buckets','https://opensea.io/assets/0x025f45bb7e08abea27a3c6a9cfb8d2acc2f6a134/126',126),
+     ('Gummo Buckets','https://opensea.io/assets/0x025f45bb7e08abea27a3c6a9cfb8d2acc2f6a134/124',124),
+-    ('Tortoise Frame Rope Cap Buckets','https://opensea.io/assets/0x025f45bb7e08abea27a3c6a9cfb8d2acc2f6a134/128',128);
++    ('Tortoise Frame Rope Cap Buckets','https://opensea.io/assets/0x025f45bb7e08abea27a3c6a9cfb8d2acc2f6a134/128',128)
++    ON CONFLICT DO NOTHING;
+ 
+ CREATE INDEX IF NOT EXISTS bucketsclub__body_idx ON bucketsclub.body USING BRIN (nft_token_id);
+ 
+diff --git a/ethereum/nft_traits/cryptobulls_traits.sql b/ethereum/nft_traits/cryptobulls_traits.sql
+index 31b311e..d172304 100644
+--- a/ethereum/nft_traits/cryptobulls_traits.sql
++++ b/ethereum/nft_traits/cryptobulls_traits.sql
+@@ -2,6 +2,8 @@
+ BEGIN;
+ CREATE SCHEMA IF NOT EXISTS cryptobulls;
+ 
++DROP TABLE IF EXISTS cryptobulls.cryptobulls_traits;
++
+ CREATE TABLE IF NOT EXISTS cryptobulls.cryptobulls_traits(
+    token_id    SMALLINT PRIMARY KEY,
+    clothing    VARCHAR(90),
+@@ -7794,7 +7796,8 @@ VALUES
+ (7774, 'Green Leaf', 'Black', '', '', 'Green', 'Orange Beret', 'Glass', '', '', ''),
+ (7775, 'Green Leaf', 'White', '', 'Cuban Cigar', 'Blue', '', 'Leather', 'Silver Triangle', '', ''),
+ (7776, 'Hoodie Red', 'Blue', '', 'Cigarette', 'Lizard', 'Bull Cap', 'Wooden', '', '', ''),
+-(7777, 'Hoodie Black CBS', 'Black', 'Silver Thunder', '', 'Orange', '', 'Metal', '', '', '');
++(7777, 'Hoodie Black CBS', 'Black', 'Silver Thunder', '', 'Orange', '', 'Metal', '', '', '')
++ON CONFLICT DO NOTHING;
+ 
+ 
+ CREATE INDEX IF NOT EXISTS cryptobulls_traits_idx ON cryptobulls.cryptobulls_traits USING BRIN (token_id);
+diff --git a/ethereum/nft_traits/cryptocoven_traits.sql b/ethereum/nft_traits/cryptocoven_traits.sql
+index 105a876..4a076df 100644
+--- a/ethereum/nft_traits/cryptocoven_traits.sql
++++ b/ethereum/nft_traits/cryptocoven_traits.sql
+@@ -1,6 +1,8 @@
+ BEGIN;
+ CREATE SCHEMA IF NOT EXISTS cryptocoven;
+ 
++DROP TABLE IF EXISTS cryptocoven.cryptocoven_traits;
++
+ CREATE TABLE IF NOT EXISTS cryptocoven.cryptocoven_traits(
+    token_id                 SMALLINT PRIMARY KEY,
+    archetype_of_power       VARCHAR(90),
+@@ -9791,7 +9793,8 @@ VALUES
+ (9750, 'Seer', '', 'Plum', 'Lithe', 'Demeulemeester (White)', 'Blank', 'Sylv', 'Sylv (White)', '', '', 'Curse Tag', '', 'Sylv', '', 'White', '', 'Sylv (Black)', 'Yohji', 'Gemini', '', '', '', 'Leo', 'Twilight', 'Sagittarius', '', 0, 9, 3, 2, 9, 9),
+ (9751, 'Necromancer', '', 'Rust', 'Lithe', '', 'Blue', 'Babylash', 'Fluffy (Brown)', '', 'Moth Gauze', '', '', 'Pixie', '', 'Warm Brown', '', '', '', 'Pisces', 'Smirk (Peach)', '', '', 'Cancer', 'Dawn', 'Cancer', 'Filmy Edwardian (White)', 1, 3, 6, 6, 8, 9),
+ (9752, 'Seer', '', 'Moss', 'Chiseled', '', 'Amber', 'Starman', 'Starman (Brown)', '', '', '', '', 'Starman', '', 'Roguish Blonde', '', '', '', 'Aries', 'Thin Smirk (Orange)', 'Ethereum Thread (Natural)', '', 'Virgo', 'Dawn', 'Aquarius', 'Open Collar (Flint)', 9, 7, 9, 7, 0, 9),
+-(9753, 'Seer', '', 'Pink', 'Chiseled', '', '', '', 'Arched (Brown)', '', '', 'Astrea (Gold)', '', 'Astrea', '', 'White', '', '', '', 'Pisces', '', 'Astrea (Gold)', '', 'Sagittarius', 'Dawn', 'Taurus', 'Astrea (Red)', 9, 9, 9, 7, 3, 8);
++(9753, 'Seer', '', 'Pink', 'Chiseled', '', '', '', 'Arched (Brown)', '', '', 'Astrea (Gold)', '', 'Astrea', '', 'White', '', '', '', 'Pisces', '', 'Astrea (Gold)', '', 'Sagittarius', 'Dawn', 'Taurus', 'Astrea (Red)', 9, 9, 9, 7, 3, 8)
++ON CONFLICT DO NOTHING;
+ 
+ CREATE INDEX IF NOT EXISTS cryptocoven_traits_idx ON cryptocoven.cryptocoven_traits USING BRIN (token_id);
+ 
+diff --git a/ethereum/nft_traits/daopunks_traits.sql b/ethereum/nft_traits/daopunks_traits.sql
+index 7c23610..813c83e 100644
+--- a/ethereum/nft_traits/daopunks_traits.sql
++++ b/ethereum/nft_traits/daopunks_traits.sql
+@@ -1123,7 +1123,8 @@ VALUES
+ (1108, 'Crypto Native', 'Shadowy', 'B Punk DAOmensional - Bankless Red', '', '', 'Robot Blue'),
+ (1109, 'Creative', 'Unicorn Pink', 'Memelord Couture - Bankless Red', '', '', ''),
+ (1110, 'Crypto Native', 'Liquidity Blue', 'Streetwear', 'GM Red Socks', 'GM Purple', 'Robot Purple'),
+-(1111, 'Creative', 'Unicorn Pink', 'Memelord Sporty Punk - Purple Node', '', 'WAGMI Wave Sushi Rice White', '');
++(1111, 'Creative', 'Unicorn Pink', 'Memelord Sporty Punk - Purple Node', '', 'WAGMI Wave Sushi Rice White', '')
++ON CONFLICT DO NOTHING;
+ 
+ CREATE INDEX IF NOT EXISTS daopunks_traits_idx ON daopunks.daopunks_traits USING BRIN (token_id);
+ 
+diff --git a/ethereum/nft_traits/incooom_genesis_traits.sql b/ethereum/nft_traits/incooom_genesis_traits.sql
+index f6cc113..04cf0f2 100644
+--- a/ethereum/nft_traits/incooom_genesis_traits.sql
++++ b/ethereum/nft_traits/incooom_genesis_traits.sql
+@@ -2927,7 +2927,8 @@ VALUES
+ ( 2912, 'Ten', 'Spades', 'PYSCHEDELIC', 54, 34 ),
+ ( 2913, 'Five', 'Spades', 'PYSCHEDELIC', 54, 42 ),
+ ( 2914, 'Jack', 'Hearts', 'PYSCHEDELIC', 54, 9 ),
+-( 2915, 'Eight', 'Hearts', 'PYSCHEDELIC', 54, 45 );
++( 2915, 'Eight', 'Hearts', 'PYSCHEDELIC', 54, 45 )
++ON CONFLICT DO NOTHING;
+ 
+ CREATE INDEX IF NOT EXISTS incooom_genesis_traits_idx ON incooom.incooom_genesis_traits USING BRIN (token_id);
+ 
+diff --git a/ethereum/nft_traits/incooom_kings_gala_traits.sql b/ethereum/nft_traits/incooom_kings_gala_traits.sql
+index b272ce5..265e8e1 100644
+--- a/ethereum/nft_traits/incooom_kings_gala_traits.sql
++++ b/ethereum/nft_traits/incooom_kings_gala_traits.sql
+@@ -3611,7 +3611,8 @@ INSERT INTO incooom.incooom_kings_gala_traits(token_id, background, legs, body,
+     (3600,'Pea','Troll','Pumpkin','Samurai','Dragon','Monk','Frankenstein'),
+     (3568,'Purple','Zeus','Wizard','Baseball33','Elf','OOO','Pumpkin'),
+     (3593,'Pea','SpecialOOOps','Baseball33','Dracula','Devil','Zeus','Orc'),
+-    (3596,'Gray','Devil','Zeus','Pirate','Astronaut','Alien','SpecialOOOps');
++    (3596,'Gray','Devil','Zeus','Pirate','Astronaut','Alien','SpecialOOOps')
++    ON CONFLICT DO NOTHING;
+ 
+ CREATE INDEX IF NOT EXISTS incooom_kings_gala_traits_idx ON incooom.incooom_kings_gala_traits USING BRIN (token_id);
+ 
+diff --git a/ethereum/nft_traits/linksdao_membership.sql b/ethereum/nft_traits/linksdao_membership.sql
+index 08cae76..044c85a 100644
+--- a/ethereum/nft_traits/linksdao_membership.sql
++++ b/ethereum/nft_traits/linksdao_membership.sql
+@@ -1,6 +1,8 @@
+ BEGIN;
+ CREATE SCHEMA IF NOT EXISTS linksdao;
+ 
++DROP TABLE IF EXISTS linksdao.linksdao_traits;
++
+ CREATE TABLE IF NOT EXISTS linksdao.linksdao_traits(
+     token_id SMALLINT PRIMARY KEY,
+     membership VARCHAR(8)         
+@@ -9099,7 +9101,8 @@ VALUES
+ ('9087','Global'),
+ ('9088','Global'),
+ ('9089','Global'),
+-('9090','Global');
++('9090','Global')
++ON CONFLICT DO NOTHING;
+ 
+ 
+ CREATE INDEX IF NOT EXISTS linksdao_traits_idx ON linksdao.linksdao_traits USING BRIN (token_id);
+diff --git a/ethereum/nft_traits/loot_attributes.sql b/ethereum/nft_traits/loot_attributes.sql
+index 7996856..ac07060 100644
+--- a/ethereum/nft_traits/loot_attributes.sql
++++ b/ethereum/nft_traits/loot_attributes.sql
+@@ -8011,6 +8011,7 @@ VALUES
+ ('4562','Falchion','Ornate Chestplate','Linen Hood','War Belt','Wool Shoes','Silk Gloves','Pendant','Bronze Ring'),
+ ('3102','Quarterstaff','Silk Robe','Linen Hood','Wool Sash','Divine Slippers','Studded Leather Gloves','Pendant','Silver Ring'),
+ ('1980','Grave Wand','Linen Robe','Divine Hood','Plated Belt','Chain Boots','Heavy Gloves','Pendant','Bronze Ring'),
+-('1039','Grave Wand','Chain Mail','Hood','Silk Sash','Chain Boots','Wool Gloves','Pendant','Bronze Ring');
++('1039','Grave Wand','Chain Mail','Hood','Silk Sash','Chain Boots','Wool Gloves','Pendant','Bronze Ring')
++ON CONFLICT DO NOTHING;
+ 
+ CREATE INDEX IF NOT EXISTS loot_loot_attributes_idx ON loot.loot_attributes USING BRIN (token_id);
+\ No newline at end of file
+diff --git a/ethereum/nft_traits/luchadores_traits.sql b/ethereum/nft_traits/luchadores_traits.sql
+index fc642c9..3925774 100644
+--- a/ethereum/nft_traits/luchadores_traits.sql
++++ b/ethereum/nft_traits/luchadores_traits.sql
+@@ -2,7 +2,7 @@ BEGIN;
+ 
+ CREATE SCHEMA IF NOT EXISTS luchadores;
+ 
+-DROP TABLE luchadores.attributes;
++DROP TABLE IF EXISTS luchadores.attributes;
+ 
+ CREATE TABLE IF NOT EXISTS luchadores.attributes(
+     id SMALLINT PRIMARY KEY,
+@@ -10018,7 +10018,8 @@ INSERT INTO luchadores.attributes(id, attributes_amount, spirit, cape, torso, ar
+ (9997,3,NULL,NULL,'Shirt','Wrist Bands','Bolt',NULL,NULL,NULL,false),
+ (9998,3,'Jaguar','Hooded',NULL,NULL,NULL,NULL,'Tights',NULL,false),
+ (9999,3,NULL,NULL,'Open Shirt','Sleeves','Classic',NULL,NULL,NULL,false),
+-(10000,3,NULL,NULL,NULL,'Left Band','Bolt',NULL,'Tights',NULL,false);
++(10000,3,NULL,NULL,NULL,'Left Band','Bolt',NULL,'Tights',NULL,false)
++ON CONFLICT DO NOTHING;
+ 
+ 
+ CREATE INDEX IF NOT EXISTS lucha_attributes_index ON luchadores.attributes USING BRIN (id);
+diff --git a/ethereum/nft_traits/on1_force_traits.sql b/ethereum/nft_traits/on1_force_traits.sql
+index 32de78e..e5477fd 100644
+--- a/ethereum/nft_traits/on1_force_traits.sql
++++ b/ethereum/nft_traits/on1_force_traits.sql
+@@ -7799,7 +7799,8 @@ VALUES
+ (7774, 'Citrine', 'Citrine', '', '0N1 Logo Pin (Black)', 'Half Open (Jasper)', 'PR Mask (Turqouise)', 'Bob (Obsidian)', 'Headphones (Rose)', '', 'Neutral', 5, 2, 5, 'Y0K-A1', 'Kimono (Rose)', 'https://ipfs.io/ipfs/QmcoavNZq2jyZGe2Zi4nanQqzU9hRPxunHAo8pgYZ5fSep/7774.png'),
+ (7775, 'Light Smoke', 'Type-01', '', '0N1 Logo Pin (White)', 'Open (Azurite)', 'V-Shades', 'Long (Citirine)', 'Earbuds', '', 'Neutral', 7, 7, 7, 'B4K3M0-N0', 'Bomber Jacket (Jasper/Obsidian)', 'https://ipfs.io/ipfs/QmcoavNZq2jyZGe2Zi4nanQqzU9hRPxunHAo8pgYZ5fSep/7775.png'),
+ (7776, 'Jasper', 'Type-01', '', 'Loop Earring', 'Open (Jasper)', 'Vape', 'Pixie (Citrine)', 'Void', '', 'Neutral', 8, 7, 5, 'B4K3M0-N0', 'Dress (Obsidian)', 'https://ipfs.io/ipfs/QmcoavNZq2jyZGe2Zi4nanQqzU9hRPxunHAo8pgYZ5fSep/7776.png'),
+-(7777, 'Jasper', 'Citrine', '', '0N1 Logo Pin (White)', 'Open (Citrine)', 'PR Mask (Jasper)', 'Long (Obsidian)', 'Void', '', 'Smirk', 1, 4, 3, 'Y0K-A1', 'T-Shirt (Obsidian)', 'https://ipfs.io/ipfs/QmcoavNZq2jyZGe2Zi4nanQqzU9hRPxunHAo8pgYZ5fSep/7777.png');
++(7777, 'Jasper', 'Citrine', '', '0N1 Logo Pin (White)', 'Open (Citrine)', 'PR Mask (Jasper)', 'Long (Obsidian)', 'Void', '', 'Smirk', 1, 4, 3, 'Y0K-A1', 'T-Shirt (Obsidian)', 'https://ipfs.io/ipfs/QmcoavNZq2jyZGe2Zi4nanQqzU9hRPxunHAo8pgYZ5fSep/7777.png')
++ON CONFLICT DO NOTHING;
+ 
+ CREATE INDEX IF NOT EXISTS on1_force_traits_idx ON on1_force.on1_force_traits USING BRIN (token_id);
+ 
+diff --git a/ethereum/nft_traits/rumblekong_stats.sql b/ethereum/nft_traits/rumblekong_stats.sql
+index ccdf651..f0b61e1 100644
+--- a/ethereum/nft_traits/rumblekong_stats.sql
++++ b/ethereum/nft_traits/rumblekong_stats.sql
+@@ -10010,6 +10010,7 @@ VALUES
+  ('9996',36,48,63,39,186,113),
+  ('9997',59,23,58,77,217,82),
+  ('9998',65,24,59,62,210,89),
+- ('9999',51,42,44,53,190,109);
++ ('9999',51,42,44,53,190,109)
++ ON CONFLICT DO NOTHING;
+ 
+ CREATE INDEX IF NOT EXISTS rumblekong_stats_idx ON rumblekongleague.rumblekong_stats USING BRIN (token_id);
+\ No newline at end of file
+diff --git a/ethereum/nft_traits/vf2_traits.sql b/ethereum/nft_traits/vf2_traits.sql
+index 6eab523..b7022ed 100644
+--- a/ethereum/nft_traits/vf2_traits.sql
++++ b/ethereum/nft_traits/vf2_traits.sql
+@@ -221000,7 +221000,7 @@ INSERT INTO vf2.traits(token_id, trait_type, trait_value) VALUES
+ (55000,'Pose','Strategizing'),
+ (55000,'Scene','Floor 55'),
+ (55000,'Spectacular','None')
+-;
++ON CONFLICT DO NOTHING;
+ 
+ CREATE INDEX IF NOT EXISTS vf2_traits_idx ON vf2.traits USING BRIN (token_id);
+ 
+diff --git a/ethereum/nft_traits/wicked_cranium_attributes.sql b/ethereum/nft_traits/wicked_cranium_attributes.sql
+index 9bb78b7..1c46ad0 100644
+--- a/ethereum/nft_traits/wicked_cranium_attributes.sql
++++ b/ethereum/nft_traits/wicked_cranium_attributes.sql
+@@ -10771,6 +10771,7 @@ VALUES
+ ('10758','WoodBark','Gin','3D','LogoTee','Paddy','Bandana'),
+ ('10759','Pohutukawa','CarouselPink','Eyepatch','ChiefCranium','Construction','Noodles'),
+ ('10760','Scrub','Golden','Shy','Chef','Ushanka','Moustache'),
+-('10761','Scrub','TheOG','3D','FurCape','Bald','BoneMask');
++('10761','Scrub','TheOG','3D','FurCape','Bald','BoneMask')
++ON CONFLICT DO NOTHING;
+ 
+ CREATE INDEX IF NOT EXISTS wicked_cranium_attributes_idx ON wicked_cranium.wicked_cranium_attributes USING BRIN (token_id);
+diff --git a/ethereum/nft_traits/wrapped_strikers_stats.sql b/ethereum/nft_traits/wrapped_strikers_stats.sql
+index 738ba86..fc82a55 100644
+--- a/ethereum/nft_traits/wrapped_strikers_stats.sql
++++ b/ethereum/nft_traits/wrapped_strikers_stats.sql
+@@ -10272,7 +10272,8 @@ VALUES
+ (10257,30,'FALSE','Thibaut Courtois',162,162),
+ (10258,28,'FALSE','Gabriel Jesus',161,161),
+ (10259,26,'FALSE','Christian Eriksen',149,149),
+-(10260,29,'FALSE','Thiago',157,157);
++(10260,29,'FALSE','Thiago',157,157)
++ON CONFLICT DO NOTHING;
+ 
+ CREATE INDEX IF NOT EXISTS wrapped_strikers_idx ON wrapped_strikers.wrapped_strikers_stats USING BRIN(token_id);
+ COMMIT;
+diff --git a/ethereum/public/bytea2numeric.sql b/ethereum/public/bytea2numeric.sql
+index 4966658..cd7b2e0 100644
+--- a/ethereum/public/bytea2numeric.sql
++++ b/ethereum/public/bytea2numeric.sql
+@@ -1,5 +1,4 @@
+-DROP FUNCTION bytea2numeric(bytea, boolean, text);
+-CREATE FUNCTION bytea2numeric(a bytea, signed boolean = true, byteorder text = 'big')
++CREATE OR REPLACE FUNCTION bytea2numeric(a bytea, signed boolean = true, byteorder text = 'big')
+     RETURNS numeric
+ AS $$
+     return int.from_bytes(a, byteorder=byteorder, signed=signed)
+diff --git a/ethereum/public/data2chartopic.sql b/ethereum/public/data2chartopic.sql
+index c7b9dc4..c11f88f 100644
+--- a/ethereum/public/data2chartopic.sql
++++ b/ethereum/public/data2chartopic.sql
+@@ -1,4 +1,3 @@
+-DROP FUNCTION data2chartopic(BYTEA, INT);
+ CREATE OR REPLACE FUNCTION data2chartopic(data BYTEA, topic INT) RETURNS CHAR(64) AS $$
+ BEGIN
+ RETURN SUBSTRING(ENCODE("data", 'hex'), (9+(64*"topic")), 64);
+diff --git a/ethereum/public/data2methodid.sql b/ethereum/public/data2methodid.sql
+index 03e6970..851d794 100644
+--- a/ethereum/public/data2methodid.sql
++++ b/ethereum/public/data2methodid.sql
+@@ -1,4 +1,3 @@
+-DROP FUNCTION data2methodid(BYTEA);
+ CREATE OR REPLACE FUNCTION data2methodid(data BYTEA) RETURNS CHAR(8) AS $$
+ BEGIN
+ RETURN LEFT(ENCODE("data", 'hex'), 8);
+diff --git a/ethereum/public/data2numerictopic.sql b/ethereum/public/data2numerictopic.sql
+index aa709b1..69c09e3 100644
+--- a/ethereum/public/data2numerictopic.sql
++++ b/ethereum/public/data2numerictopic.sql
+@@ -1,4 +1,3 @@
+-DROP FUNCTION data2numerictopic(BYTEA, INT, INT);
+ CREATE OR REPLACE FUNCTION data2numerictopic(data BYTEA, topic INT, decimals INT) RETURNS FLOAT AS $$
+ BEGIN
+ RETURN bytea2numeric(decode(SUBSTRING(ENCODE("data",'hex'),(9+(64*"topic")),64),'hex'))/POWER(10, "decimals");
+diff --git a/ethereum/public/namehash.sql b/ethereum/public/namehash.sql
+index 61c1fff..6269cf7 100644
+--- a/ethereum/public/namehash.sql
++++ b/ethereum/public/namehash.sql
+@@ -1,7 +1,6 @@
+ -- Enables the use of ENS's namehash function -> https://docs.ens.domains/contract-api-reference/name-processing
+ -- Python namehash library ->  https://github.com/antonio-mendes/ens-namehash-py/tree/update_library
+-DROP FUNCTION IF EXISTS namehash(name_to_hash text);
+-CREATE FUNCTION namehash(name_to_hash text)
++CREATE OR REPLACE FUNCTION namehash(name_to_hash text)
+     RETURNS bytea
+ AS $$
+     from namehash import namehash
+diff --git a/ethereum/public/numeric2bytea.sql b/ethereum/public/numeric2bytea.sql
+index d3ad8e9..34788d0 100644
+--- a/ethereum/public/numeric2bytea.sql
++++ b/ethereum/public/numeric2bytea.sql
+@@ -1,5 +1,4 @@
+-DROP FUNCTION numeric2bytea(numeric, integer, boolean, text);
+-CREATE FUNCTION numeric2bytea (a numeric, _length integer = 32, signed boolean = true, byteorder text = 'big')
++CREATE OR REPLACE FUNCTION numeric2bytea (a numeric, _length integer = 32, signed boolean = true, byteorder text = 'big')
+   RETURNS bytea
+ AS $$
+     return int(a).to_bytes(_length, byteorder=byteorder, signed=signed)
+diff --git a/ethereum/stablecoin/burn.sql b/ethereum/stablecoin/burn.sql
+index b978bfc..02ed02c 100644
+--- a/ethereum/stablecoin/burn.sql
++++ b/ethereum/stablecoin/burn.sql
+@@ -1,4 +1,4 @@
+-CREATE TABLE stablecoin.burn (
++CREATE TABLE IF NOT EXISTS stablecoin.burn (
+     burner bytea,
+     amount numeric,
+     symbol text,
+diff --git a/ethereum/stablecoin/mint.sql b/ethereum/stablecoin/mint.sql
+index 403718e..86e5801 100644
+--- a/ethereum/stablecoin/mint.sql
++++ b/ethereum/stablecoin/mint.sql
+@@ -1,4 +1,4 @@
+-CREATE TABLE stablecoin.mint (
++CREATE TABLE IF NOT EXISTS stablecoin.mint (
+     minter bytea,
+     amount numeric,
+     symbol text,
+diff --git a/ethereum/stablecoin/transfer.sql b/ethereum/stablecoin/transfer.sql
+index a1bde4f..4ed0219 100644
+--- a/ethereum/stablecoin/transfer.sql
++++ b/ethereum/stablecoin/transfer.sql
+@@ -1,4 +1,4 @@
+-CREATE TABLE stablecoin.transfer (
++CREATE TABLE IF NOT EXISTS stablecoin.transfer (
+     "from" bytea,
+     "to" bytea,
+     coin_name text NOT NULL,
+diff --git a/ethereum/synthetix/rates.sql b/ethereum/synthetix/rates.sql
+index 59ac14c..03a31de 100644
+--- a/ethereum/synthetix/rates.sql
++++ b/ethereum/synthetix/rates.sql
+@@ -5,9 +5,9 @@ CREATE TABLE IF NOT EXISTS synthetix.rates (
+     PRIMARY KEY(currency_key, block_time)
+ );
+ 
+-CREATE INDEX rates_block_time ON synthetix.rates (block_time);
+-CREATE INDEX rates_currency_key ON synthetix.rates (currency_key);
+-CREATE INDEX rates_currency_key_block_time ON synthetix.rates (currency_key, block_time DESC) INCLUDE (currency_rate);
++CREATE INDEX IF NOT EXISTS rates_block_time ON synthetix.rates (block_time);
++CREATE INDEX IF NOT EXISTS rates_currency_key ON synthetix.rates (currency_key);
++CREATE INDEX IF NOT EXISTS rates_currency_key_block_time ON synthetix.rates (currency_key, block_time DESC) INCLUDE (currency_rate);
+ 
+ INSERT INTO synthetix.rates VALUES (
+     '\x7355534400000000000000000000000000000000000000000000000000000000'::bytea, 1000000000000000000::numeric,	'2019-03-11T22:17:52.000Z'::timestamptz
+diff --git a/ethereum/synthetix/synths.sql b/ethereum/synthetix/synths.sql
+index 8085765..0160b73 100644
+--- a/ethereum/synthetix/synths.sql
++++ b/ethereum/synthetix/synths.sql
+@@ -179,7 +179,7 @@ INSERT INTO synthetix.synths VALUES
+     ('\x9D4193187B247a400E8D8ba716F1C18c0dC65528'::bytea, '\x6941444100000000000000000000000000000000000000000000000000000000'::bytea, '2020-04-02T09:34:45.000Z'::timestamptz)
+ ON CONFLICT DO NOTHING;
+ 
+-CREATE INDEX synths_currency_key_block_time ON synthetix.synths (currency_key, block_time DESC) INCLUDE (address);
++CREATE INDEX IF NOT EXISTS synths_currency_key_block_time ON synthetix.synths (currency_key, block_time DESC) INCLUDE (address);
+ 
+ CREATE OR REPLACE FUNCTION synthetix.insert_synths(start_ts timestamptz, end_ts timestamptz=now()) RETURNS integer
+ LANGUAGE plpgsql AS $function$
+diff --git a/ethereum/synthetix/trades.sql b/ethereum/synthetix/trades.sql
+index 3209095..eb6904c 100644
+--- a/ethereum/synthetix/trades.sql
++++ b/ethereum/synthetix/trades.sql
+@@ -1,4 +1,4 @@
+-CREATE TABLE synthetix.trades (
++CREATE TABLE IF NOT EXISTS synthetix.trades (
+     block_time timestamptz NOT NULL,
+     token_a_amount numeric,
+     token_b_amount numeric,
+diff --git a/ethereum/yamfinance/pools.sql b/ethereum/yamfinance/pools.sql
+index 821722a..f947e5d 100644
+--- a/ethereum/yamfinance/pools.sql
++++ b/ethereum/yamfinance/pools.sql
+@@ -1,4 +1,4 @@
+-CREATE TABLE yamfinance.pools (
++CREATE TABLE IF NOT EXISTS yamfinance.pools (
+     pool_address bytea,
+     token_address bytea,
+     symbol text,
+diff --git a/ethereum/yearn/all_vaults.sql b/ethereum/yearn/all_vaults.sql
+index bee8d0e..ee22b46 100644
+--- a/ethereum/yearn/all_vaults.sql
++++ b/ethereum/yearn/all_vaults.sql
+@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS yearn.yearn_all_vaults (
+     tag text
+ );
+ 
+-
++TRUNCATE TABLE yearn.yearn_all_vaults;
+ 
+ 
+ COPY yearn.yearn_all_vaults(contract_address, ytoken, decimals, symbol, tag) FROM stdin;
+diff --git a/ethereum/yearn/view_contract_strategy.sql b/ethereum/yearn/view_contract_strategy.sql
+index 995e55a..de61427 100644
+--- a/ethereum/yearn/view_contract_strategy.sql
++++ b/ethereum/yearn/view_contract_strategy.sql
+@@ -1,7 +1,6 @@
+ BEGIN;
+-DROP VIEW IF EXISTS yearn."view_yearn_contract_strategy";
+ 
+-CREATE VIEW yearn."view_yearn_contract_strategy" AS(
++CREATE OR REPLACE VIEW yearn."view_yearn_contract_strategy" AS(
+     SELECT
+     yct."yvault_contract",
+     CASE
+diff --git a/ethereum/yearn/view_iearn_v2_deployments.sql b/ethereum/yearn/view_iearn_v2_deployments.sql
+index c29e556..798f125 100644
+--- a/ethereum/yearn/view_iearn_v2_deployments.sql
++++ b/ethereum/yearn/view_iearn_v2_deployments.sql
+@@ -1,7 +1,6 @@
+ BEGIN;
+-DROP VIEW IF EXISTS iearn_v2."view_iearn_v2_deployments" cascade;
+ 
+-CREATE VIEW iearn_v2."view_iearn_v2_deployments" AS(
++CREATE OR REPLACE VIEW iearn_v2."view_iearn_v2_deployments" AS(
+     (SELECT
+     (wtd."amount"/10^yct."yvault_deposit_token_decimals")*-1 as amount,
+     yct."yvault_contract",
+diff --git a/ethereum/yearn/view_ironbank_aggregate.sql b/ethereum/yearn/view_ironbank_aggregate.sql
+index a337d27..6ed5f51 100644
+--- a/ethereum/yearn/view_ironbank_aggregate.sql
++++ b/ethereum/yearn/view_ironbank_aggregate.sql
+@@ -1,7 +1,6 @@
+ BEGIN;
+ 
+-DROP VIEW IF EXISTS yearn."view_ironbank_aggregate" CASCADE;
+-CREATE VIEW yearn."view_ironbank_aggregate" AS(
++CREATE OR REPLACE VIEW yearn."view_ironbank_aggregate" AS(
+     WITH borrows AS(
+         SELECT 
+             payer AS address_one,
+diff --git a/ethereum/yearn/view_yearn_contract_tokens.sql b/ethereum/yearn/view_yearn_contract_tokens.sql
+index 3c44c10..6fe52b2 100644
+--- a/ethereum/yearn/view_yearn_contract_tokens.sql
++++ b/ethereum/yearn/view_yearn_contract_tokens.sql
+@@ -1,8 +1,7 @@
+ 
+ BEGIN;
+-DROP VIEW IF EXISTS yearn."view_yearn_contract_tokens" cascade;
+ 
+-CREATE VIEW yearn."view_yearn_contract_tokens" AS(
++CREATE OR REPLACE VIEW yearn."view_yearn_contract_tokens" AS(
+     SELECT
+     DISTINCT ON ("from")
+     ett."mod_contract" AS yVault_deposit_token,
+diff --git a/ethereum/yearn/view_yearn_harvests.sql b/ethereum/yearn/view_yearn_harvests.sql
+index b73f6d1..225b524 100644
+--- a/ethereum/yearn/view_yearn_harvests.sql
++++ b/ethereum/yearn/view_yearn_harvests.sql
+@@ -1,8 +1,7 @@
+ 
+ BEGIN;
+-DROP VIEW IF EXISTS yearn."view_yearn_harvests" cascade;
+ 
+-CREATE VIEW yearn."view_yearn_harvests" AS(
++CREATE OR REPLACE VIEW yearn."view_yearn_harvests" AS(
+   SELECT
+     CASE
+       WHEN hvst."profit" > 0 THEN (hvst."profit"/(10^yct."yvault_deposit_token_decimals"))
+diff --git a/ethereum/zeroex/view_0x_api_fills.sql b/ethereum/zeroex/view_0x_api_fills.sql
+index df2e5bd..afeeb43 100644
+--- a/ethereum/zeroex/view_0x_api_fills.sql
++++ b/ethereum/zeroex/view_0x_api_fills.sql
+@@ -1,5 +1,5 @@
+ CREATE TABLE IF NOT EXISTS zeroex.view_0x_api_fills (
+-    tx_hash bytea,
++    tx_hash text,
+     evt_index integer,
+     contract_address bytea,
+     block_time timestamptz,
+@@ -139,7 +139,7 @@ WITH zeroex_tx_raw AS (
+     	ERC20BridgeTransfer AS (
+     		SELECT 	logs.tx_hash,
+     				INDEX AS evt_index,
+-            logs.contract_address,
++            logs.contract_address::BYTEA,
+     				block_time AS block_time,
+             substring(DATA,141,20) AS maker,
+             substring(DATA,173,20) AS taker,
+@@ -159,7 +159,7 @@ WITH zeroex_tx_raw AS (
+       BridgeFill AS (
+     		SELECT 	logs.tx_hash,
+     				INDEX AS evt_index,
+-            logs.contract_address,
++            logs.contract_address::BYTEA,
+     				block_time AS block_time,
+             substring(DATA,13,20) AS maker,
+             '\xdef1c0ded9bec7f1a1670819833240f027b25eff'::bytea AS taker,
+@@ -180,7 +180,7 @@ WITH zeroex_tx_raw AS (
+       NewBridgeFill AS (
+         SELECT  logs.tx_hash,
+             INDEX AS evt_index,
+-            logs.contract_address,
++            logs.contract_address::BYTEA,
+             block_time AS block_time,
+             substring(DATA,13,20) AS maker,
+             '\xdef1c0ded9bec7f1a1670819833240f027b25eff'::bytea AS taker,
+@@ -337,7 +337,7 @@ WITH zeroex_tx_raw AS (
+               all_tx.contract_address,
+       				all_tx.block_time,
+       				maker,
+-      				case when taker = '\xdef1c0ded9bec7f1a1670819833240f027b25eff'::bytea then tx."from" else taker end as taker, -- fix the user masked by ProxyContract issue
++                   case when taker = '\xdef1c0ded9bec7f1a1670819833240f027b25eff'::bytea then (SELECT "from"::BYTEA FROM ethereum.transactions WHERE hash = all_tx.tx_hash) else taker end as taker, -- fix the user masked by ProxyContract issue
+       				taker_token,
+       				maker_token,
+       				taker_token_amount_raw / (10^tt.decimals) AS taker_token_amount,
+@@ -362,12 +362,6 @@ WITH zeroex_tx_raw AS (
+       					ELSE COALESCE((all_tx.maker_token_amount_raw / (10^mt.decimals))*mp.price,(all_tx.taker_token_amount_raw / (10^tt.decimals))*tp.price)
+       					END AS volume_usd
+       		FROM all_tx
+-          INNER JOIN ethereum.transactions tx
+-                                  ON all_tx.tx_hash = tx.hash
+-                                    AND tx.block_time >= start_ts
+-                                    AND tx.block_time < end_ts
+-                                    -- AND tx.block_number >= start_block
+-                                    -- AND tx.block_number < end_block
+       		LEFT JOIN prices.usd tp ON date_trunc('minute', all_tx.block_time) = tp.minute
+       								AND all_tx.taker_token = tp.contract_address
+                                                                 AND tp.minute >= start_ts
+diff --git a/ethereum/zeroex/view_affiliate_data.sql b/ethereum/zeroex/view_affiliate_data.sql
+index f5e9bb2..f3890ea 100644
+--- a/ethereum/zeroex/view_affiliate_data.sql
++++ b/ethereum/zeroex/view_affiliate_data.sql
+@@ -1,7 +1,7 @@
+ BEGIN;
+ DROP TABLE IF EXISTS zeroex.view_api_affiliate_data;
+ CREATE TABLE IF NOT EXISTS zeroex.view_api_affiliate_data (
+-    tx_hash BYTEA
++    tx_hash TEXT
+     , trace_address INTEGER[]
+     , block_number BIGINT
+     , block_time TIMESTAMPTZ
+@@ -38,13 +38,13 @@ WITH rows AS (
+     WHERE
+         tr."to" IN (
+             -- exchange contract
+-            '\x61935cbdd02287b511119ddb11aeb42f1593b7ef'::BYTEA
++            '0x61935cbdd02287b511119ddb11aeb42f1593b7ef'
+             -- forwarder addresses
+-            , '\x6958f5e95332d93d21af0d7b9ca85b8212fee0a5'::BYTEA
+-            , '\x4aa817c6f383c8e8ae77301d18ce48efb16fd2be'::BYTEA
+-            , '\x4ef40d1bf0983899892946830abf99eca2dbc5ce'::BYTEA
++            , '0x6958f5e95332d93d21af0d7b9ca85b8212fee0a5'
++            , '0x4aa817c6f383c8e8ae77301d18ce48efb16fd2be'
++            , '0x4ef40d1bf0983899892946830abf99eca2dbc5ce'
+             -- exchange proxy
+-            , '\xdef1c0ded9bec7f1a1670819833240f027b25eff'::BYTEA
++            , '0xdef1c0ded9bec7f1a1670819833240f027b25eff'
+         )
+     AND (
+         POSITION('\x869584cd'::BYTEA IN input) <> 0
+diff --git a/ethereum/zeroex/view_epochs.sql b/ethereum/zeroex/view_epochs.sql
+index cfa09e9..b2c19b8 100644
+--- a/ethereum/zeroex/view_epochs.sql
++++ b/ethereum/zeroex/view_epochs.sql
+@@ -7,7 +7,7 @@ WITH
+             , ee."totalFeesCollected"::NUMERIC / 1e18 AS total_fees_collected_by_pools_in_eth
+             -- fill in epoch 1 starting values with the staking proxy deployment tx
+             , CASE
+-                    WHEN ee.epoch = 1 THEN '4680e9d59bae9bbde1b0bae0fa5157ceea64ea923f2be434e5da6f5df2bdb907'::bytea
++                    WHEN ee.epoch = 1 THEN '0x4680e9d59bae9bbde1b0bae0fa5157ceea64ea923f2be434e5da6f5df2bdb907'
+                     ELSE LAG(ee.evt_tx_hash) OVER (ORDER BY ee.epoch)
+                 END AS starting_transaction_hash
+             , CASE
+@@ -40,7 +40,7 @@ WITH
+             , tx.index AS starting_transaction_index
+             , ee.evt_block_number AS starting_block_number
+             , b.time AS starting_block_timestamp
+-            , NULL::BYTEA AS ending_transaction_hash
++            , NULL::TEXT AS ending_transaction_hash
+             , NULL::BIGINT AS ending_transaction_index
+             , NULL::BIGINT AS ending_block_number
+             , NULL::TIMESTAMPTZ AS ending_block_timestamp
+diff --git a/prepare.sql b/prepare.sql
+index e28fec7..ed91bc3 100644
+--- a/prepare.sql
++++ b/prepare.sql
+@@ -1,4 +1,65 @@
+-CREATE OR REPLACE FUNCTION TO_TEXT(bytes BYTEA)
++CREATE OR REPLACE FUNCTION labels.GET(address_ BYTEA, type_ TEXT)
++RETURNS TEXT[]
++STRICT IMMUTABLE LANGUAGE plpgsql AS
++$$
++DECLARE
++  names TEXT[];
++BEGIN
++  SELECT ARRAY_AGG("name") INTO names
++  FROM labels.labels
++  WHERE address = address_ AND "type" = type_;
++  RETURN names;
++END;
++$$;
++
++CREATE OR REPLACE FUNCTION TO_INTS(txt TEXT)
++RETURNS INTEGER[]
++STRICT IMMUTABLE LANGUAGE plpgsql AS
++$$
++BEGIN
++  IF LEFT(txt, 1) = '{' THEN
++      RETURN txt::INTEGER[];
++	ELSE
++      RETURN STRING_TO_ARRAY(txt, ',')::INTEGER[];
++	END IF;
++END;
++$$;
++
++CREATE OR REPLACE FUNCTION public.MAX_BLOCK_NUMBER_LT(block_timestamp TIMESTAMPTZ)
++RETURNS BIGINT
++STRICT IMMUTABLE LANGUAGE plpgsql AS
++$$
++DECLARE
++  block_number BIGINT := 0;
++  ts TIMESTAMP := block_timestamp;
++BEGIN
++  SELECT "number" INTO block_number
++  FROM public.blocks
++  WHERE "timestamp" < ts
++  ORDER BY "timestamp" DESC
++  LIMIT 1;
++  RETURN block_number;
++END;
++$$;
++
++CREATE OR REPLACE FUNCTION public.MAX_BLOCK_NUMBER_LE(block_timestamp TIMESTAMPTZ)
++RETURNS BIGINT
++STRICT IMMUTABLE LANGUAGE plpgsql AS
++$$
++DECLARE
++  block_number BIGINT := 0;
++  ts TIMESTAMP := block_timestamp;
++BEGIN
++  SELECT "number" INTO block_number
++  FROM public.blocks
++  WHERE "timestamp" <= ts
++  ORDER BY "timestamp" DESC
++  LIMIT 1;
++  RETURN block_number;
++END;
++$$;
++
++CREATE OR REPLACE FUNCTION public.TO_TEXT(bytes BYTEA)
+ RETURNS TEXT
+ STRICT IMMUTABLE LANGUAGE plpgsql AS
+ $$
+@@ -7,7 +68,7 @@ BEGIN
+ END;
+ $$;
+ 
+-CREATE OR REPLACE FUNCTION TO_BYTEA(txt TEXT)
++CREATE OR REPLACE FUNCTION public.TO_BYTEA(txt TEXT)
+ RETURNS BYTEA
+ STRICT IMMUTABLE LANGUAGE plpgsql AS
+ $$
+@@ -17,24 +78,24 @@ END;
+ $$;
+ 
+ DO $$ BEGIN
+-    CREATE CAST (BYTEA AS TEXT) WITH FUNCTION TO_TEXT(BYTEA) AS IMPLICIT;
++    CREATE CAST (BYTEA AS TEXT) WITH FUNCTION public.TO_TEXT(BYTEA) AS IMPLICIT;
+ EXCEPTION
+     WHEN duplicate_object THEN null;
+ END $$;
+ 
+ DO $$ BEGIN
+-    CREATE CAST (BYTEA AS VARCHAR) WITH FUNCTION TO_TEXT(BYTEA) AS IMPLICIT;
++    CREATE CAST (BYTEA AS VARCHAR) WITH FUNCTION public.TO_TEXT(BYTEA) AS IMPLICIT;
+ EXCEPTION
+     WHEN duplicate_object THEN null;
+ END $$;
+ 
+ DO $$ BEGIN
+-    CREATE CAST (TEXT AS BYTEA) WITH FUNCTION TO_BYTEA(TEXT) AS IMPLICIT;
++    CREATE CAST (TEXT AS BYTEA) WITH FUNCTION public.TO_BYTEA(TEXT) AS IMPLICIT;
+ EXCEPTION
+     WHEN duplicate_object THEN null;
+ END $$;
+ DO $$ BEGIN
+-    CREATE CAST (VARCHAR AS BYTEA) WITH FUNCTION TO_BYTEA(TEXT) AS IMPLICIT;
++    CREATE CAST (VARCHAR AS BYTEA) WITH FUNCTION public.TO_BYTEA(TEXT) AS IMPLICIT;
+ EXCEPTION
+     WHEN duplicate_object THEN null;
+ END $$;
+@@ -51,7 +112,7 @@ CREATE OR REPLACE VIEW ethereum.logs AS
+   SELECT log_index AS "index", transaction_hash AS tx_hash, address AS contract_address, DECODE(SUBSTRING(topic0, 3), 'hex')::BYTEA AS topic1, DECODE(SUBSTRING(topic1, 3), 'hex')::BYTEA AS topic2, DECODE(SUBSTRING(topic2, 3), 'hex')::BYTEA AS topic3, DECODE(SUBSTRING(topic3, 3), 'hex')::BYTEA AS topic4, DECODE(SUBSTRING("data", 3), 'hex')::BYTEA AS "data", block_timestamp AS block_time, block_number FROM public.logs;
+ 
+ CREATE OR REPLACE VIEW ethereum.traces AS
+-  SELECT transaction_hash AS tx_hash, block_number, block_timestamp AS block_time, from_address AS "from", to_address AS "to", DECODE(SUBSTRING("input", 3), 'hex')::BYTEA AS "input", STRING_TO_ARRAY(trace_address, ',')::INTEGER[] AS trace_address, call_type, trace_type AS "type", status::BOOL AS success, subtraces::INTEGER AS sub_traces FROM public.traces;
++  SELECT transaction_hash AS tx_hash, block_number, block_timestamp AS block_time, from_address AS "from", to_address AS "to", value, DECODE(SUBSTRING(input, 3), 'hex') AS input, TO_INTS(trace_address::text) AS trace_address, call_type, trace_type AS type, status::BOOLEAN AS success, gas_used, subtraces::INTEGER AS sub_traces FROM public.traces;
+ 
+ CREATE OR REPLACE FUNCTION public.numeric2bytea_old(a numeric)
+   RETURNS bytea
+@@ -88,6 +149,18 @@ CREATE SCHEMA IF NOT EXISTS "nft";
+ CREATE SCHEMA IF NOT EXISTS "dex";
+ CREATE SCHEMA IF NOT EXISTS "setprotocol_v2";
+ CREATE SCHEMA IF NOT EXISTS "rari_capital";
++CREATE SCHEMA IF NOT EXISTS "uniswap_merkle";
++CREATE SCHEMA IF NOT EXISTS "index";
++CREATE SCHEMA IF NOT EXISTS "indexed_finance";
++CREATE SCHEMA IF NOT EXISTS "integral_size";
++CREATE SCHEMA IF NOT EXISTS "balancer_v1";
++CREATE SCHEMA IF NOT EXISTS "token_balances";
++CREATE SCHEMA IF NOT EXISTS "erasure_bay";
++CREATE SCHEMA IF NOT EXISTS "stablecoin";
++CREATE SCHEMA IF NOT EXISTS "erasure_quant";
++CREATE SCHEMA IF NOT EXISTS "uniswap_v1";
++CREATE SCHEMA IF NOT EXISTS "lending";
++CREATE SCHEMA IF NOT EXISTS "erasure_numerai";
+ 
+ CREATE UNIQUE INDEX IF NOT EXISTS uniqe_job ON cron.job USING btree (command);
+ CREATE UNIQUE INDEX IF NOT EXISTS unique_command ON cron.job USING btree (command);
