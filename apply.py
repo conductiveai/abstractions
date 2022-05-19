@@ -129,10 +129,7 @@ def apply_patch(filename: str) -> int:
 
 
 def revert_patch(path: str) -> int:
-    rc = call(['git', 'checkout', '-f', path])
-    if rc == 0:
-        rc = call(['git', 'clean', '-fd', path])
-    return rc
+    return call(['git', 'checkout', '-f', path])
 
 
 def prepare(filename: str, env: Dict[str, str]) -> int:

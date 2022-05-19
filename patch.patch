@@ -285,9 +285,40 @@ index 738882f..98ee355 100644
          SELECT
              address AS pool_id,
 diff --git a/ethereum/curvefi/view_pools.sql b/ethereum/curvefi/view_pools.sql
-index df7c991..2e43283 100644
+index df7c991..98da3d2 100644
 --- a/ethereum/curvefi/view_pools.sql
 +++ b/ethereum/curvefi/view_pools.sql
+@@ -702,18 +702,18 @@ WITH regular_poolDeployed AS (
+             (record->>'version') AS version,
+             (record->>'name') AS name,
+             (record->>'symbol') AS symbol,
+-            REPLACE((record->>'pool_address'),'0x','\x')::bytea AS pool_address,
+-            REPLACE((record->>'token_address'),'0x','\x')::bytea AS token_address,
+-            REPLACE((record->>'deposit_contract'),'0x','\x')::bytea AS deposit_contract,
+-            REPLACE((record->>'gauge_contract'),'0x','\x')::bytea AS gauge_contract,
+-            REPLACE((record->>'coin0'),'0x','\x')::bytea AS coin0,
+-            REPLACE((record->>'coin1'),'0x','\x')::bytea AS coin1,
+-            REPLACE((record->>'coin2'),'0x','\x')::bytea AS coin2,
+-            REPLACE((record->>'coin3'),'0x','\x')::bytea AS coin3,
+-            REPLACE((record->>'undercoin0'),'0x','\x')::bytea AS undercoin0,
+-            REPLACE((record->>'undercoin1'),'0x','\x')::bytea AS undercoin1,
+-            REPLACE((record->>'undercoin2'),'0x','\x')::bytea AS undercoin2,
+-            REPLACE((record->>'undercoin3'),'0x','\x')::bytea AS undercoin3
++            DECODE(SUBSTR(record->>'pool_address', 3), 'hex') AS pool_address,
++            DECODE(SUBSTR(record->>'token_address', 3), 'hex') AS token_address,
++            DECODE(SUBSTR(record->>'deposit_contract', 3), 'hex') AS deposit_contract,
++            DECODE(SUBSTR(record->>'gauge_contract', 3), 'hex') AS gauge_contract,
++            DECODE(SUBSTR(record->>'coin0', 3), 'hex') AS coin0,
++            DECODE(SUBSTR(record->>'coin1', 3), 'hex') AS coin1,
++            DECODE(SUBSTR(record->>'coin2', 3), 'hex') AS coin2,
++            DECODE(SUBSTR(record->>'coin3', 3), 'hex') AS coin3,
++            DECODE(SUBSTR(record->>'undercoin0', 3), 'hex') AS undercoin0,
++            DECODE(SUBSTR(record->>'undercoin1', 3), 'hex') AS undercoin1,
++            DECODE(SUBSTR(record->>'undercoin2', 3), 'hex') AS undercoin2,
++            DECODE(SUBSTR(record->>'undercoin3', 3), 'hex') AS undercoin3
+         FROM records
+     )
+     SELECT
 @@ -897,5 +897,5 @@ SELECT
      undercoin3,
      gauge_contract
@@ -940,7 +971,7 @@ index f648c28..4aa08e9 100644
          token_a_amount_raw,
          token_b_amount_raw,
 diff --git a/ethereum/dex/trades/insert_tokenlon.sql b/ethereum/dex/trades/insert_tokenlon.sql
-index 54dd256..e5a20c7 100644
+index 54dd256..d157c2b 100644
 --- a/ethereum/dex/trades/insert_tokenlon.sql
 +++ b/ethereum/dex/trades/insert_tokenlon.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -952,6 +983,33 @@ index 54dd256..e5a20c7 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -162,20 +162,20 @@ WITH rows AS (
+             'Tokenlon' AS project,
+             '5' AS version,
+             'Aggregator' AS category,
+-            REPLACE(t.order::jsonb ->> 'userAddr', '0x', '\x')::BYTEA AS trader_a,
+-            REPLACE(t.order::jsonb ->> 'makerAddr', '0x', '\x')::BYTEA AS trader_b,
++            DECODE(SUBSTR(t.order::jsonb ->> 'userAddr', 3), 'hex') AS trader_a,
++            DECODE(SUBSTR(t.order::jsonb ->> 'makerAddr', 3), 'hex') AS trader_b,
+             (t.order::jsonb -> 'takerAssetAmount')::numeric token_a_amount_raw,
+             (t.order::jsonb -> 'makerAssetAmount')::numeric token_b_amount_raw,
+             NULL::numeric AS usd_amount,
+             CASE
+-                WHEN REPLACE(t.order::jsonb ->> 'takerAssetAddr', '0x', '\x')::BYTEA = '\x0000000000000000000000000000000000000000'
++                WHEN t.order::jsonb ->> 'takerAssetAddr' = '0x0000000000000000000000000000000000000000'
+                 THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::BYTEA
+-                ELSE REPLACE(t.order::jsonb ->> 'takerAssetAddr', '0x', '\x')::BYTEA
++                ELSE DECODE(SUBSTR(t.order::jsonb ->> 'takerAssetAddr', 3), 'hex')
+             END AS token_a_address,
+             CASE
+-                WHEN REPLACE(t.order::jsonb ->> 'makerAssetAddr', '0x', '\x')::BYTEA = '\x0000000000000000000000000000000000000000'
++                WHEN t.order::jsonb ->> 'makerAssetAddr' = '0x0000000000000000000000000000000000000000'
+                 THEN '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::BYTEA
+-                ELSE REPLACE(t.order::jsonb ->> 'makerAssetAddr', '0x', '\x')::BYTEA
++                ELSE DECODE(SUBSTR(t.order::jsonb ->> 'makerAssetAddr', 3), 'hex')
+             END AS token_b_address,
+             t.contract_address AS exchange_contract_address,
+             t.evt_tx_hash AS tx_hash,
 diff --git a/ethereum/dex/trades/insert_unifi.sql b/ethereum/dex/trades/insert_unifi.sql
 index eff19ff..8dbb7dc 100644
 --- a/ethereum/dex/trades/insert_unifi.sql
@@ -1520,7 +1578,7 @@ index ee522dd..c39e111 100644
  -- Aggregate the solver added and removed events into a single table
  -- with true/false for adds/removes respectively
 diff --git a/ethereum/gnosis_safe/view_safes.sql b/ethereum/gnosis_safe/view_safes.sql
-index 42e93b6..d7acd13 100644
+index 42e93b6..df4ae8f 100644
 --- a/ethereum/gnosis_safe/view_safes.sql
 +++ b/ethereum/gnosis_safe/view_safes.sql
 @@ -1,25 +1,25 @@
@@ -1540,7 +1598,7 @@ index 42e93b6..d7acd13 100644
          AND (
              (substring(et."input" for 4) = '\x0ec78d9e' -- setup methods of v0.1.0
 -                AND et."to" = '\x8942595A2dC5181Df0465AF0D7be08c8f23C93af') -- mastercopy v0.1.0
-+                AND et."to" = '0x8942595A2dC5181Df0465AF0D7be08c8f23C93af') -- mastercopy v0.1.0
++                AND et."to" = '0x8942595a2dc5181df0465af0d7be08c8f23c93af') -- mastercopy v0.1.0
              OR
              (substring(et."input" for 4) = '\xa97ab18a' -- setup methods of v1.0.0
 -                AND et."to" = '\xb6029ea3b2c51d09a50b53ca8012feeb05bda35a') -- mastercopy v1.0.0
@@ -1704,6 +1762,78 @@ index 8475210..98c5b82 100644
 -('9999','Female','2','{"Mohawk","Nerd Glasses"}');
 +('9999','Female','2','{"Mohawk","Nerd Glasses"}')
 +ON CONFLICT DO NOTHING;
+diff --git a/ethereum/lending/borrow.sql b/ethereum/lending/borrow.sql
+index e2d5b28..325da86 100644
+--- a/ethereum/lending/borrow.sql
++++ b/ethereum/lending/borrow.sql
+@@ -152,12 +152,7 @@ WITH borrow AS (
+             AND call_block_time < end_ts
+         ) maker
+     ) borrow
+-    INNER JOIN ethereum.transactions tx
+-        ON borrow.tx_hash = tx.hash
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+-        AND tx.block_time >= start_ts
+-        AND tx.block_time < end_ts
++    INNER JOIN ethereum.transactions tx ON borrow.tx_hash = tx.hash
+     LEFT JOIN erc20.tokens t ON t.contract_address = borrow.asset_address
+     LEFT JOIN prices.usd p ON p.minute = date_trunc('minute', borrow.block_time) AND p.contract_address = borrow.asset_address AND p.minute >= start_ts AND p.minute < end_ts
+ ),
+diff --git a/ethereum/lending/collateral_change.sql b/ethereum/lending/collateral_change.sql
+index 3da2111..fc48768 100644
+--- a/ethereum/lending/collateral_change.sql
++++ b/ethereum/lending/collateral_change.sql
+@@ -210,12 +210,7 @@ WITH collateral_change AS (
+         AND evt_block_time >= start_ts
+         AND evt_block_time < end_ts
+     ) collateral
+-    INNER JOIN ethereum.transactions tx
+-        ON collateral.tx_hash = tx.hash
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+-        AND tx.block_time >= start_ts
+-        AND tx.block_time < end_ts
++    INNER JOIN ethereum.transactions tx ON collateral.tx_hash = tx.hash
+     LEFT JOIN erc20.tokens t ON t.contract_address = collateral.asset_address
+     LEFT JOIN prices.usd p ON p.minute = date_trunc('minute', collateral.block_time) AND p.contract_address = collateral.asset_address AND p.minute >= start_ts AND p.minute < end_ts
+ ),
+diff --git a/ethereum/lending/liquidation.sql b/ethereum/lending/liquidation.sql
+index 58ed2f1..6502e4a 100644
+--- a/ethereum/lending/liquidation.sql
++++ b/ethereum/lending/liquidation.sql
+@@ -149,12 +149,7 @@ WITH liquidation AS (
+         ON maker_liq.contract_address = m.contract_address
+ 
+     ) liquidation
+-    INNER JOIN ethereum.transactions tx
+-        ON liquidation.tx_hash = tx.hash
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+-        AND tx.block_time >= start_ts
+-        AND tx.block_time < end_ts
++    INNER JOIN ethereum.transactions tx ON liquidation.tx_hash = tx.hash
+     LEFT JOIN erc20.tokens t ON t.contract_address = liquidation.debt_to_cover_asset_address
+     LEFT JOIN prices.usd p ON p.minute = date_trunc('minute', liquidation.block_time) AND p.contract_address = liquidation.debt_to_cover_asset_address AND p.minute >= start_ts AND p.minute < end_ts
+     
+diff --git a/ethereum/lending/repay.sql b/ethereum/lending/repay.sql
+index 8c5ed42..918b3ef 100644
+--- a/ethereum/lending/repay.sql
++++ b/ethereum/lending/repay.sql
+@@ -150,12 +150,7 @@ WITH repays AS (
+             AND call_block_time < end_ts
+         ) maker
+     ) repay
+-    INNER JOIN ethereum.transactions tx
+-        ON repay.tx_hash = tx.hash
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+-        AND tx.block_time >= start_ts
+-        AND tx.block_time < end_ts
++    INNER JOIN ethereum.transactions tx ON repay.tx_hash = tx.hash
+     LEFT JOIN erc20.tokens t ON t.contract_address = repay.asset_address
+     LEFT JOIN prices.usd p ON p.minute = date_trunc('minute', repay.block_time) AND p.contract_address = repay.asset_address AND p.minute >= start_ts AND p.minute < end_ts
+ ),
 diff --git a/ethereum/llama/llama_treasury_addresses.sql b/ethereum/llama/llama_treasury_addresses.sql
 index 7c92208..3dfdd7f 100644
 --- a/ethereum/llama/llama_treasury_addresses.sql
@@ -1971,10 +2101,92 @@ index b6f4d62..3a53e94 100644
      LEFT JOIN wyvern_calldata wc ON wc.call_tx_hash = trades.evt_tx_hash
      LEFT JOIN nft.tokens tokens ON tokens.contract_address = wc.nft_contract_address
 diff --git a/ethereum/nft/trades/insert_rarible.sql b/ethereum/nft/trades/insert_rarible.sql
-index 8830684..c9f609a 100644
+index 8830684..9d34ac8 100644
 --- a/ethereum/nft/trades/insert_rarible.sql
 +++ b/ethereum/nft/trades/insert_rarible.sql
-@@ -352,12 +352,7 @@ rows AS (
+@@ -165,8 +165,8 @@ WITH rarible_trades AS (
+         evt_block_time,
+         evt_block_number,
+         evt_index,
+-        decode(substring("leftAsset"->>'data' FROM 27 FOR 40), 'hex') AS nft_contract_address,
+-        CAST(bytea2numericpy(decode(substring("leftAsset"->>'data' FROM 67 FOR 64), 'hex')) AS TEXT) AS nft_token_id,
++        substr(decode("leftAsset"->>'data', 'base64'), 13, 20) AS nft_contract_address,
++        CAST(bytea2numericpy(substr(decode("leftAsset"->>'data', 'base64'), 33, 32)) AS TEXT) AS nft_token_id,
+         "leftMaker" AS seller,
+         "rightMaker" AS buyer,
+         "newLeftFill" AS original_amount_raw,
+@@ -174,12 +174,8 @@ WITH rarible_trades AS (
+         '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'::bytea AS currency_contract,
+         'Buy' AS category -- 'Purchase'
+     FROM rarible."ExchangeV2_evt_Match"
+-    WHERE "rightAsset"->>'assetClass' = '0xaaaebeba' -- ETH
+-    AND (
+-        "leftAsset"->>'assetClass' = '0x973bb640' 
+-        OR 
+-        "leftAsset"->>'assetClass' = '0x73ad2146'
+-        )
++    WHERE jarray2hex("rightAsset"->>'assetClass') = '0xaaaebeba' -- ETH
++      AND jarray2hex("leftAsset"->>'assetClass') = ANY(ARRAY['0x973bb640', '0x73ad2146'])
+     UNION ALL
+     -- ERC20 purchases of ERC1155 or ERC721 
+     SELECT
+@@ -191,21 +187,17 @@ WITH rarible_trades AS (
+         evt_block_time,
+         evt_block_number,
+         evt_index,
+-        decode(substring("leftAsset"->>'data' FROM 27 FOR 40), 'hex') AS nft_contract_address,
+-        CAST(bytea2numericpy(decode(substring("leftAsset"->>'data' FROM 67 FOR 64), 'hex')) AS TEXT) AS nft_token_id,
++        substr(decode("leftAsset"->>'data', 'base64'), 13, 20) AS nft_contract_address,
++        CAST(bytea2numericpy(substr(decode("leftAsset"->>'data', 'base64'), 33, 32)) AS TEXT) AS nft_token_id,
+         "leftMaker" AS seller,
+         "rightMaker" AS buyer,
+         "newLeftFill" AS original_amount_raw,
+-        decode(substring("rightAsset"->>'data' FROM 27 FOR 40), 'hex') AS original_currency_contract,
+-        decode(substring("rightAsset"->>'data' FROM 27 FOR 40), 'hex') AS currency_contract,
++        substr(decode("rightAsset"->>'data', 'base64'), 13, 20) AS original_currency_contract,
++        substr(decode("rightAsset"->>'data', 'base64'), 13, 20) AS currency_contract,
+         'Buy' AS category -- 'Purchase'
+     FROM rarible."ExchangeV2_evt_Match"
+-    WHERE "rightAsset"->>'assetClass' = '0x8ae85d84'
+-    AND (
+-        "leftAsset"->>'assetClass' = '0x973bb640' 
+-        OR
+-        "leftAsset"->>'assetClass' = '0x73ad2146' 
+-        )
++    WHERE jarray2hex("rightAsset"->>'assetClass') = '0x8ae85d84'
++      AND jarray2hex("leftAsset"->>'assetClass') = ANY(ARRAY['0x973bb640', '0x73ad2146'])
+     UNION ALL
+     -- WETH Bid Accepted
+     SELECT
+@@ -217,21 +209,17 @@ WITH rarible_trades AS (
+         evt_block_time,
+         evt_block_number,
+         evt_index,
+-        decode(substring("rightAsset"->>'data' FROM 27 FOR 40), 'hex') AS nft_contract_address,
+-        CAST(bytea2numericpy(decode(substring("rightAsset"->>'data' FROM 67 FOR 64), 'hex')) AS TEXT) AS nft_token_id,
++        substr(decode("rightAsset"->>'data', 'base64'), 13, 20) AS nft_contract_address,
++        CAST(bytea2numericpy(substr(decode("rightAsset"->>'data', 'base64'), 33, 32)) AS TEXT) AS nft_token_id,
+         "rightMaker" AS seller,
+         "leftMaker" AS buyer,
+         "newRightFill" AS original_amount_raw,
+-        decode(substring("leftAsset"->>'data' FROM 27 FOR 40), 'hex') AS original_currency_contract,
+-        decode(substring("leftAsset"->>'data' FROM 27 FOR 40), 'hex') AS currency_contract,
++        substr(decode("leftAsset"->>'data', 'base64'), 13, 20) AS original_currency_contract,
++        substr(decode("leftAsset"->>'data', 'base64'), 13, 20) AS currency_contract,
+         'Buy' AS category -- 'Purchase'
+     FROM rarible."ExchangeV2_evt_Match"
+-    WHERE "leftAsset"->>'assetClass' = '0x8ae85d84'
+-    AND (
+-        "rightAsset"->>'assetClass' = '0x973bb640' 
+-        OR
+-        "rightAsset"->>'assetClass' = '0x73ad2146' 
+-        )
++    WHERE jarray2hex("leftAsset"->>'assetClass') = '0x8ae85d84'
++      AND jarray2hex("rightAsset"->>'assetClass') = ANY(ARRAY['0x973bb640', '0x73ad2146'])
+ ),
+ -- Get ERC721 and ERC1155 transfer data for every trade transaction
+ rarible_erc_union AS (
+@@ -352,12 +340,7 @@ rows AS (
          row_number() OVER (PARTITION BY platform, trades.evt_tx_hash, trades.evt_index, category ORDER BY platform_version, evt_type) AS trade_id
      FROM
          rarible_trades trades
@@ -1989,9 +2201,72 @@ index 8830684..c9f609a 100644
      LEFT JOIN erc20.tokens erc20 ON erc20.contract_address = trades.currency_contract
      LEFT JOIN nft.tokens tokens ON tokens.contract_address = trades.nft_contract_address
 diff --git a/ethereum/nft/trades/insert_superrare.sql b/ethereum/nft/trades/insert_superrare.sql
-index 3813b1e..8cd1eb8 100644
+index 3813b1e..1f71cf9 100644
 --- a/ethereum/nft/trades/insert_superrare.sql
 +++ b/ethereum/nft/trades/insert_superrare.sql
+@@ -21,7 +21,7 @@ WITH superrare_trades AS (
+     FROM
+         ethereum."logs"
+     WHERE
+-        contract_address = '\x2947f98c42597966a0ec25e92843c09ac17fbaa7'
++        contract_address = '0x2947f98c42597966a0ec25e92843c09ac17fbaa7'
+     AND
+         topic1 = '\x5764dbcef91eb6f946584f4ea671217c686fa7e858ce4f9f42d08422b86556a9'
+ UNION ALL
+@@ -42,7 +42,7 @@ UNION ALL
+     FROM
+         ethereum."logs"
+     WHERE
+-        contract_address = '\x41a322b28d0ff354040e2cbc676f0320d8c8850d'
++        contract_address = '0x41a322b28d0ff354040e2cbc676f0320d8c8850d'
+     AND
+         topic1 = '\x16dd16959a056953a63cf14bf427881e762e54f03d86b864efea8238dd3b822f'
+ UNION ALL
+@@ -63,7 +63,7 @@ UNION ALL
+     FROM
+         ethereum."logs"
+     WHERE
+-        contract_address = '\x65b49f7aee40347f5a90b714be4ef086f3fe5e2c'
++        contract_address = '0x65b49f7aee40347f5a90b714be4ef086f3fe5e2c'
+     AND
+         topic1 = '\x5764dbcef91eb6f946584f4ea671217c686fa7e858ce4f9f42d08422b86556a9'
+ UNION ALL
+@@ -84,7 +84,7 @@ UNION ALL
+     FROM
+         ethereum."logs"
+     WHERE
+-        contract_address = '\x2947f98c42597966a0ec25e92843c09ac17fbaa7'
++        contract_address = '0x2947f98c42597966a0ec25e92843c09ac17fbaa7'
+     AND
+         topic1 = '\x2a9d06eec42acd217a17785dbec90b8b4f01a93ecd8c127edd36bfccf239f8b6'
+ UNION ALL
+@@ -105,7 +105,7 @@ UNION ALL
+     FROM
+         ethereum."logs"
+     WHERE
+-        contract_address = '\x41a322b28d0ff354040e2cbc676f0320d8c8850d'
++        contract_address = '0x41a322b28d0ff354040e2cbc676f0320d8c8850d'
+     AND
+         topic1 = '\xd6deddb2e105b46d4644d24aac8c58493a0f107e7973b2fe8d8fa7931a2912be'
+ UNION ALL
+@@ -126,7 +126,7 @@ UNION ALL
+     FROM
+         ethereum."logs"
+     WHERE
+-        contract_address = '\x65b49f7aee40347f5a90b714be4ef086f3fe5e2c'
++        contract_address = '0x65b49f7aee40347f5a90b714be4ef086f3fe5e2c'
+     AND
+         topic1 = '\x2a9d06eec42acd217a17785dbec90b8b4f01a93ecd8c127edd36bfccf239f8b6'
+ UNION ALL
+@@ -147,7 +147,7 @@ UNION ALL
+     FROM
+         ethereum."logs"
+     WHERE
+-        contract_address = '\x8c9f364bf7a56ed058fc63ef81c6cf09c833e656'
++        contract_address = '0x8c9f364bf7a56ed058fc63ef81c6cf09c833e656'
+     AND
+         topic1 = '\xea6d16c6bfcad11577aef5cc6728231c9f069ac78393828f8ca96847405902a9'
+ ), 
 @@ -301,12 +301,7 @@ rows AS (
          row_number() OVER (PARTITION BY platform, trades.tx_hash, trades.evt_index, category ORDER BY platform_version, evt_type) AS trade_id
      FROM
@@ -2496,7 +2771,7 @@ index b73f6d1..225b524 100644
      CASE
        WHEN hvst."profit" > 0 THEN (hvst."profit"/(10^yct."yvault_deposit_token_decimals"))
 diff --git a/ethereum/zeroex/view_0x_api_fills.sql b/ethereum/zeroex/view_0x_api_fills.sql
-index df2e5bd..afeeb43 100644
+index df2e5bd..edaf66c 100644
 --- a/ethereum/zeroex/view_0x_api_fills.sql
 +++ b/ethereum/zeroex/view_0x_api_fills.sql
 @@ -1,5 +1,5 @@
@@ -2609,140 +2884,3 @@ index cfa09e9..b2c19b8 100644
              , NULL::BIGINT AS ending_transaction_index
              , NULL::BIGINT AS ending_block_number
              , NULL::TIMESTAMPTZ AS ending_block_timestamp
-diff --git a/prepare.sql b/prepare.sql
-index e28fec7..ed91bc3 100644
---- a/prepare.sql
-+++ b/prepare.sql
-@@ -1,4 +1,65 @@
--CREATE OR REPLACE FUNCTION TO_TEXT(bytes BYTEA)
-+CREATE OR REPLACE FUNCTION labels.GET(address_ BYTEA, type_ TEXT)
-+RETURNS TEXT[]
-+STRICT IMMUTABLE LANGUAGE plpgsql AS
-+$$
-+DECLARE
-+  names TEXT[];
-+BEGIN
-+  SELECT ARRAY_AGG("name") INTO names
-+  FROM labels.labels
-+  WHERE address = address_ AND "type" = type_;
-+  RETURN names;
-+END;
-+$$;
-+
-+CREATE OR REPLACE FUNCTION TO_INTS(txt TEXT)
-+RETURNS INTEGER[]
-+STRICT IMMUTABLE LANGUAGE plpgsql AS
-+$$
-+BEGIN
-+  IF LEFT(txt, 1) = '{' THEN
-+      RETURN txt::INTEGER[];
-+	ELSE
-+      RETURN STRING_TO_ARRAY(txt, ',')::INTEGER[];
-+	END IF;
-+END;
-+$$;
-+
-+CREATE OR REPLACE FUNCTION public.MAX_BLOCK_NUMBER_LT(block_timestamp TIMESTAMPTZ)
-+RETURNS BIGINT
-+STRICT IMMUTABLE LANGUAGE plpgsql AS
-+$$
-+DECLARE
-+  block_number BIGINT := 0;
-+  ts TIMESTAMP := block_timestamp;
-+BEGIN
-+  SELECT "number" INTO block_number
-+  FROM public.blocks
-+  WHERE "timestamp" < ts
-+  ORDER BY "timestamp" DESC
-+  LIMIT 1;
-+  RETURN block_number;
-+END;
-+$$;
-+
-+CREATE OR REPLACE FUNCTION public.MAX_BLOCK_NUMBER_LE(block_timestamp TIMESTAMPTZ)
-+RETURNS BIGINT
-+STRICT IMMUTABLE LANGUAGE plpgsql AS
-+$$
-+DECLARE
-+  block_number BIGINT := 0;
-+  ts TIMESTAMP := block_timestamp;
-+BEGIN
-+  SELECT "number" INTO block_number
-+  FROM public.blocks
-+  WHERE "timestamp" <= ts
-+  ORDER BY "timestamp" DESC
-+  LIMIT 1;
-+  RETURN block_number;
-+END;
-+$$;
-+
-+CREATE OR REPLACE FUNCTION public.TO_TEXT(bytes BYTEA)
- RETURNS TEXT
- STRICT IMMUTABLE LANGUAGE plpgsql AS
- $$
-@@ -7,7 +68,7 @@ BEGIN
- END;
- $$;
- 
--CREATE OR REPLACE FUNCTION TO_BYTEA(txt TEXT)
-+CREATE OR REPLACE FUNCTION public.TO_BYTEA(txt TEXT)
- RETURNS BYTEA
- STRICT IMMUTABLE LANGUAGE plpgsql AS
- $$
-@@ -17,24 +78,24 @@ END;
- $$;
- 
- DO $$ BEGIN
--    CREATE CAST (BYTEA AS TEXT) WITH FUNCTION TO_TEXT(BYTEA) AS IMPLICIT;
-+    CREATE CAST (BYTEA AS TEXT) WITH FUNCTION public.TO_TEXT(BYTEA) AS IMPLICIT;
- EXCEPTION
-     WHEN duplicate_object THEN null;
- END $$;
- 
- DO $$ BEGIN
--    CREATE CAST (BYTEA AS VARCHAR) WITH FUNCTION TO_TEXT(BYTEA) AS IMPLICIT;
-+    CREATE CAST (BYTEA AS VARCHAR) WITH FUNCTION public.TO_TEXT(BYTEA) AS IMPLICIT;
- EXCEPTION
-     WHEN duplicate_object THEN null;
- END $$;
- 
- DO $$ BEGIN
--    CREATE CAST (TEXT AS BYTEA) WITH FUNCTION TO_BYTEA(TEXT) AS IMPLICIT;
-+    CREATE CAST (TEXT AS BYTEA) WITH FUNCTION public.TO_BYTEA(TEXT) AS IMPLICIT;
- EXCEPTION
-     WHEN duplicate_object THEN null;
- END $$;
- DO $$ BEGIN
--    CREATE CAST (VARCHAR AS BYTEA) WITH FUNCTION TO_BYTEA(TEXT) AS IMPLICIT;
-+    CREATE CAST (VARCHAR AS BYTEA) WITH FUNCTION public.TO_BYTEA(TEXT) AS IMPLICIT;
- EXCEPTION
-     WHEN duplicate_object THEN null;
- END $$;
-@@ -51,7 +112,7 @@ CREATE OR REPLACE VIEW ethereum.logs AS
-   SELECT log_index AS "index", transaction_hash AS tx_hash, address AS contract_address, DECODE(SUBSTRING(topic0, 3), 'hex')::BYTEA AS topic1, DECODE(SUBSTRING(topic1, 3), 'hex')::BYTEA AS topic2, DECODE(SUBSTRING(topic2, 3), 'hex')::BYTEA AS topic3, DECODE(SUBSTRING(topic3, 3), 'hex')::BYTEA AS topic4, DECODE(SUBSTRING("data", 3), 'hex')::BYTEA AS "data", block_timestamp AS block_time, block_number FROM public.logs;
- 
- CREATE OR REPLACE VIEW ethereum.traces AS
--  SELECT transaction_hash AS tx_hash, block_number, block_timestamp AS block_time, from_address AS "from", to_address AS "to", DECODE(SUBSTRING("input", 3), 'hex')::BYTEA AS "input", STRING_TO_ARRAY(trace_address, ',')::INTEGER[] AS trace_address, call_type, trace_type AS "type", status::BOOL AS success, subtraces::INTEGER AS sub_traces FROM public.traces;
-+  SELECT transaction_hash AS tx_hash, block_number, block_timestamp AS block_time, from_address AS "from", to_address AS "to", value, DECODE(SUBSTRING(input, 3), 'hex') AS input, TO_INTS(trace_address::text) AS trace_address, call_type, trace_type AS type, status::BOOLEAN AS success, gas_used, subtraces::INTEGER AS sub_traces FROM public.traces;
- 
- CREATE OR REPLACE FUNCTION public.numeric2bytea_old(a numeric)
-   RETURNS bytea
-@@ -88,6 +149,18 @@ CREATE SCHEMA IF NOT EXISTS "nft";
- CREATE SCHEMA IF NOT EXISTS "dex";
- CREATE SCHEMA IF NOT EXISTS "setprotocol_v2";
- CREATE SCHEMA IF NOT EXISTS "rari_capital";
-+CREATE SCHEMA IF NOT EXISTS "uniswap_merkle";
-+CREATE SCHEMA IF NOT EXISTS "index";
-+CREATE SCHEMA IF NOT EXISTS "indexed_finance";
-+CREATE SCHEMA IF NOT EXISTS "integral_size";
-+CREATE SCHEMA IF NOT EXISTS "balancer_v1";
-+CREATE SCHEMA IF NOT EXISTS "token_balances";
-+CREATE SCHEMA IF NOT EXISTS "erasure_bay";
-+CREATE SCHEMA IF NOT EXISTS "stablecoin";
-+CREATE SCHEMA IF NOT EXISTS "erasure_quant";
-+CREATE SCHEMA IF NOT EXISTS "uniswap_v1";
-+CREATE SCHEMA IF NOT EXISTS "lending";
-+CREATE SCHEMA IF NOT EXISTS "erasure_numerai";
- 
- CREATE UNIQUE INDEX IF NOT EXISTS uniqe_job ON cron.job USING btree (command);
- CREATE UNIQUE INDEX IF NOT EXISTS unique_command ON cron.job USING btree (command);

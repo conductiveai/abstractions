@@ -12,6 +12,12 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION JARRAY2HEX(txt TEXT)
+RETURNS TEXT
+AS $$
+    return '0x' + ''.join([format(int(c, 10), '02x') for c in txt.strip("[] ").split(",")])
+$$ LANGUAGE plpython3u IMMUTABLE STRICT;
+
 CREATE OR REPLACE FUNCTION TO_INTS(txt TEXT)
 RETURNS INTEGER[]
 STRICT IMMUTABLE LANGUAGE plpgsql AS
