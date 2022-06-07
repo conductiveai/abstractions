@@ -25,4 +25,5 @@ SELECT
 FROM nft_users_collections_traded_clean 
 WHERE label = label_trim
     AND LENGTH(label) < 45
+    AND address IS NOT NULL
 ON CONFLICT DO NOTHING ;
