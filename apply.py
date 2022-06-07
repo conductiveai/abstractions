@@ -268,8 +268,9 @@ def main(args) -> int:
 
     env = get_env()
 
-    if prepare('prepare.sql', env) != 0:
-        return -1
+    if args.prepare:
+        if prepare('prepare.sql', env) != 0:
+            return -1
 
     if args.apply_backfills:
         apply_backfill_scripts('script-list.txt', env)
@@ -285,6 +286,7 @@ if __name__ == "__main__":
     parser.add_argument('-b', '--use-backfills', dest='use_backfills', action='store_true', help='use backfill queries if exists', default=False)
     parser.add_argument('-s', '--skip-patch', dest='skip_patch', action='store_true', help='skip patch applying', default=False)
     parser.add_argument('-r', '--revert-patch', dest='revert_patch', action='store_true', help='revert patch modifications', default=False)
+    parser.add_argument('-p', '--prepare', dest='prepare', action='store_true', help='use prepare.sql', default=False)
     args = parser.parse_args()
     print(args)
     return_code = main(args)
