@@ -327,7 +327,7 @@ index df7c991..98da3d2 100644
 +LEFT JOIN ethereum.contracts c ON c.address = pool_address::TEXT
  ORDER BY dune_table_name DESC
 diff --git a/ethereum/dex/trades/insert_1inch.sql b/ethereum/dex/trades/insert_1inch.sql
-index 96cdcbe..6a87e55 100644
+index 96cdcbe..af8e246 100644
 --- a/ethereum/dex/trades/insert_1inch.sql
 +++ b/ethereum/dex/trades/insert_1inch.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -426,6 +426,15 @@ index 96cdcbe..6a87e55 100644
              maker AS trader_b,
              "output_1" AS token_a_amount_raw,
              "output_0" AS token_b_amount_raw,
+@@ -315,7 +315,7 @@ WITH rows AS (
+             call_trace_address,
+             NULL AS evt_index
+         FROM (
+-            select '1' as version, decode(substring("order"::jsonb->>'makerAssetData' from 35 for 40), 'hex') as maker, contract_address, "order", output_0, output_1, call_block_time, call_tx_hash, call_trace_address from oneinch_lop."LimitOrderProtocol_call_fillOrder" where call_success union all
++            select '1' as version, substr(decode("order"::jsonb->>'makerAssetData', 'base64'), 17, 20) as maker, contract_address, "order", output_0, output_1, call_block_time, call_tx_hash, call_trace_address from oneinch_lop."LimitOrderProtocol_call_fillOrder" where call_success union all
+             select '2' as version, decode(substring("order"::jsonb->>'maker' from 3 for 40), 'hex') as maker, contract_address, "order", output_0, output_1, call_block_time, call_tx_hash, call_trace_address from oneinch_lop_v2."LimitOrderProtocol_call_fillOrder" where call_success union all
+             select '2' as version, decode(substring("order"::jsonb->>'maker' from 3 for 40), 'hex') as maker, contract_address, "order", output_0, output_1, call_block_time, call_tx_hash, call_trace_address from oneinch_lop_v2."LimitOrderProtocol_call_fillOrderTo" where call_success union all
+             select '2' as version, decode(substring("order"::jsonb->>'maker' from 3 for 40), 'hex') as maker, contract_address, "order", output_0, output_1, call_block_time, call_tx_hash, call_trace_address from oneinch_lop_v2."LimitOrderProtocol_call_fillOrderToWithPermit" where call_success
 @@ -330,7 +330,7 @@ WITH rows AS (
              '1inch Limit Order Protocol' AS project,
              'eRFQ v1' AS version,
@@ -435,6 +444,15 @@ index 96cdcbe..6a87e55 100644
              decode(substring("order"::jsonb->>'maker' from 3), 'hex') AS trader_b,
              "output_1" AS token_a_amount_raw,
              "output_0" AS token_b_amount_raw,
+@@ -339,7 +339,7 @@ WITH rows AS (
+             decode(substring("order"::jsonb->>'makerAsset' from 3), 'hex') AS token_b_address,
+             contract_address AS exchange_contract_address,
+             call_tx_hash,
+-            trace_address,
++            call_trace_address,
+             NULL AS evt_index
+         FROM (
+             select "call_block_time", "order", "output_0", "output_1", "contract_address", "call_tx_hash", "call_trace_address" from oneinch_v4."AggregationRouterV4_call_fillOrderRFQ" where call_success union all
 @@ -356,7 +356,7 @@ WITH rows AS (
              '1inch' AS project,
              'eRFQ v1' AS version,
@@ -444,15 +462,24 @@ index 96cdcbe..6a87e55 100644
              decode(substring("order"::jsonb->>'maker' from 3), 'hex') AS trader_b,
              "output_1" AS token_a_amount_raw,
              "output_0" AS token_b_amount_raw,
-@@ -382,7 +382,7 @@ WITH rows AS (
-             '1inch Limit Order Protocol' AS project,
+@@ -365,7 +365,7 @@ WITH rows AS (
+             decode(substring("order"::jsonb->>'makerAsset' from 3), 'hex') AS token_b_address,
+             contract_address AS exchange_contract_address,
+             call_tx_hash,
+-            trace_address,
++            call_trace_address,
+             NULL AS evt_index
+         FROM (
+             select "call_block_time", "order", "output_0", "output_1", "contract_address", "call_tx_hash", "call_trace_address" from oneinch_v4."AggregationRouterV4_call_fillOrderRFQ" where call_success union all
+@@ -383,7 +383,7 @@ WITH rows AS (
              'RFQ v1' AS version,
              'DEX' AS category,
--            ts."from"  AS trader_a,
-+            ts."from"::BYTEA  AS trader_a,
-             decode(substring("order"::jsonb->>'makerAssetData' from 35 for 40), 'hex') AS trader_b,
+             ts."from"  AS trader_a,
+-            decode(substring("order"::jsonb->>'makerAssetData' from 35 for 40), 'hex') AS trader_b,
++            substr(decode("order"::jsonb->>'makerAssetData', 'base64'), 17, 20) AS trader_b,
              bytea2numeric(substring(tf2.input from 69 for 32)) AS token_a_amount_raw,
              bytea2numeric(substring(tf1.input from 69 for 32)) AS token_b_amount_raw,
+             NULL::numeric AS usd_amount,
 @@ -407,7 +407,7 @@ WITH rows AS (
              '1inch Limit Order Protocol' AS project,
              'RFQ v2' as version,
@@ -462,17 +489,17 @@ index 96cdcbe..6a87e55 100644
              decode(substring("order"::jsonb->>'maker' from 3 for 40), 'hex') AS trader_b,
              "output_1" AS token_a_amount_raw,
              "output_0" AS token_b_amount_raw,
-@@ -425,7 +425,7 @@ WITH rows AS (
-         ) call
-         LEFT JOIN ethereum.traces ts ON call_tx_hash = ts.tx_hash AND call_trace_address = ts.trace_address
-     ) dexs
--    INNER JOIN ethereum.transactions tx
-+    LEFT JOIN ethereum.transactions tx
+@@ -429,8 +429,6 @@ WITH rows AS (
          ON dexs.tx_hash = tx.hash
          AND tx.block_time >= start_ts
          AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_1inch_lp.sql b/ethereum/dex/trades/insert_1inch_lp.sql
-index d8c2881..6ee87af 100644
+index d8c2881..eef35cc 100644
 --- a/ethereum/dex/trades/insert_1inch_lp.sql
 +++ b/ethereum/dex/trades/insert_1inch_lp.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -484,8 +511,17 @@ index d8c2881..6ee87af 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -82,8 +82,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_airswap.sql b/ethereum/dex/trades/insert_airswap.sql
-index 60f3e4b..9fc2094 100644
+index 60f3e4b..6a5c5d2 100644
 --- a/ethereum/dex/trades/insert_airswap.sql
 +++ b/ethereum/dex/trades/insert_airswap.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -497,8 +533,17 @@ index 60f3e4b..9fc2094 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -117,8 +117,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_balancer.sql b/ethereum/dex/trades/insert_balancer.sql
-index 65f65aa..8b9ee08 100644
+index 65f65aa..a5ae5c4 100644
 --- a/ethereum/dex/trades/insert_balancer.sql
 +++ b/ethereum/dex/trades/insert_balancer.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -510,8 +555,17 @@ index 65f65aa..8b9ee08 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -106,8 +106,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_bancor.sql b/ethereum/dex/trades/insert_bancor.sql
-index ab253c2..cc99c6e 100644
+index ab253c2..13e13ab 100644
 --- a/ethereum/dex/trades/insert_bancor.sql
 +++ b/ethereum/dex/trades/insert_bancor.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -523,8 +577,17 @@ index ab253c2..cc99c6e 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -84,8 +84,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_clipper.sql b/ethereum/dex/trades/insert_clipper.sql
-index 69297dc..fabd513 100644
+index 69297dc..9f8c844 100644
 --- a/ethereum/dex/trades/insert_clipper.sql
 +++ b/ethereum/dex/trades/insert_clipper.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -536,8 +599,17 @@ index 69297dc..fabd513 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -83,8 +83,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_cofix.sql b/ethereum/dex/trades/insert_cofix.sql
-index 5b8d5ea..540f7fd 100644
+index 5b8d5ea..be29392 100644
 --- a/ethereum/dex/trades/insert_cofix.sql
 +++ b/ethereum/dex/trades/insert_cofix.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -549,8 +621,17 @@ index 5b8d5ea..540f7fd 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -123,8 +123,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_convergence.sql b/ethereum/dex/trades/insert_convergence.sql
-index c7955f1..f1a6e4b 100644
+index c7955f1..a0cf664 100644
 --- a/ethereum/dex/trades/insert_convergence.sql
 +++ b/ethereum/dex/trades/insert_convergence.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -562,8 +643,17 @@ index c7955f1..f1a6e4b 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -82,8 +82,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_curve.sql b/ethereum/dex/trades/insert_curve.sql
-index c0604e8..3c60792 100644
+index c0604e8..b6d7e12 100644
 --- a/ethereum/dex/trades/insert_curve.sql
 +++ b/ethereum/dex/trades/insert_curve.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -575,8 +665,17 @@ index c0604e8..3c60792 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -78,8 +78,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_ddex.sql b/ethereum/dex/trades/insert_ddex.sql
-index 85f6b7c..a864549 100644
+index 85f6b7c..f89f33b 100644
 --- a/ethereum/dex/trades/insert_ddex.sql
 +++ b/ethereum/dex/trades/insert_ddex.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -588,8 +687,17 @@ index 85f6b7c..a864549 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -87,8 +87,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_defi_swap.sql b/ethereum/dex/trades/insert_defi_swap.sql
-index 3505e8d..bbd94c8 100644
+index 3505e8d..ea4d8cc 100644
 --- a/ethereum/dex/trades/insert_defi_swap.sql
 +++ b/ethereum/dex/trades/insert_defi_swap.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -601,8 +709,17 @@ index 3505e8d..bbd94c8 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -78,8 +78,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_defiplaza.sql b/ethereum/dex/trades/insert_defiplaza.sql
-index 61044dc..de96b36 100644
+index 61044dc..1f2b4bf 100644
 --- a/ethereum/dex/trades/insert_defiplaza.sql
 +++ b/ethereum/dex/trades/insert_defiplaza.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -614,8 +731,17 @@ index 61044dc..de96b36 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -81,8 +81,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_dfx_finance.sql b/ethereum/dex/trades/insert_dfx_finance.sql
-index f9d8fd4..fcda1e0 100644
+index f9d8fd4..f449b7b 100644
 --- a/ethereum/dex/trades/insert_dfx_finance.sql
 +++ b/ethereum/dex/trades/insert_dfx_finance.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -627,8 +753,17 @@ index f9d8fd4..fcda1e0 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -78,8 +78,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_dodo.sql b/ethereum/dex/trades/insert_dodo.sql
-index 30091ba..03079ce 100644
+index 30091ba..06ff40d 100644
 --- a/ethereum/dex/trades/insert_dodo.sql
 +++ b/ethereum/dex/trades/insert_dodo.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -640,8 +775,17 @@ index 30091ba..03079ce 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -241,8 +241,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_dydx.sql b/ethereum/dex/trades/insert_dydx.sql
-index a94ad0c..38f5acd 100644
+index a94ad0c..2efa345 100644
 --- a/ethereum/dex/trades/insert_dydx.sql
 +++ b/ethereum/dex/trades/insert_dydx.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -653,8 +797,17 @@ index a94ad0c..38f5acd 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -125,8 +125,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_futureswap.sql b/ethereum/dex/trades/insert_futureswap.sql
-index bff3b37..1db5560 100644
+index bff3b37..1f8b413 100644
 --- a/ethereum/dex/trades/insert_futureswap.sql
 +++ b/ethereum/dex/trades/insert_futureswap.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -666,8 +819,17 @@ index bff3b37..1db5560 100644
        trader_b,
        token_a_amount_raw,
        token_b_amount_raw,
+@@ -86,8 +86,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_gnosis_protocol.sql b/ethereum/dex/trades/insert_gnosis_protocol.sql
-index 525db7a..67929c9 100644
+index 525db7a..db1919d 100644
 --- a/ethereum/dex/trades/insert_gnosis_protocol.sql
 +++ b/ethereum/dex/trades/insert_gnosis_protocol.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -679,8 +841,30 @@ index 525db7a..67929c9 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -104,8 +104,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa 
+diff --git a/ethereum/dex/trades/insert_hashflow.sql b/ethereum/dex/trades/insert_hashflow.sql
+index c2b2952..24710b6 100644
+--- a/ethereum/dex/trades/insert_hashflow.sql
++++ b/ethereum/dex/trades/insert_hashflow.sql
+@@ -32,8 +32,6 @@ WITH aux AS (
+             ON hf.tx_hash = tx.hash
+             AND tx.block_time >= start_ts
+             AND tx.block_time < end_ts
+-            AND tx.block_number >= start_block
+-            AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = hf.maker_token
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = hf.taker_token
+     WHERE fill_status is true -- success trade
 diff --git a/ethereum/dex/trades/insert_idex.sql b/ethereum/dex/trades/insert_idex.sql
-index 7be84de..a5a8269 100644
+index 7be84de..31c5d77 100644
 --- a/ethereum/dex/trades/insert_idex.sql
 +++ b/ethereum/dex/trades/insert_idex.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -692,8 +876,17 @@ index 7be84de..a5a8269 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -85,8 +85,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_indexed_finance.sql b/ethereum/dex/trades/insert_indexed_finance.sql
-index a8c382f..0a8e1e7 100644
+index a8c382f..69b1089 100644
 --- a/ethereum/dex/trades/insert_indexed_finance.sql
 +++ b/ethereum/dex/trades/insert_indexed_finance.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -705,8 +898,17 @@ index a8c382f..0a8e1e7 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -206,8 +206,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_integral_size.sql b/ethereum/dex/trades/insert_integral_size.sql
-index 60dbe67..87f55bf 100644
+index 60dbe67..27db4b4 100644
 --- a/ethereum/dex/trades/insert_integral_size.sql
 +++ b/ethereum/dex/trades/insert_integral_size.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -718,8 +920,17 @@ index 60dbe67..87f55bf 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -80,8 +80,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_kyber.sql b/ethereum/dex/trades/insert_kyber.sql
-index a737e76..4f0a8ab 100644
+index a737e76..4ce19cb 100644
 --- a/ethereum/dex/trades/insert_kyber.sql
 +++ b/ethereum/dex/trades/insert_kyber.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -731,8 +942,17 @@ index a737e76..4f0a8ab 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -224,8 +224,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_linkswap.sql b/ethereum/dex/trades/insert_linkswap.sql
-index 1f7788e..9be50f0 100644
+index 1f7788e..015b762 100644
 --- a/ethereum/dex/trades/insert_linkswap.sql
 +++ b/ethereum/dex/trades/insert_linkswap.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -744,8 +964,17 @@ index 1f7788e..9be50f0 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -79,8 +79,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_loopring.sql b/ethereum/dex/trades/insert_loopring.sql
-index b7a7b4f..204185b 100644
+index b7a7b4f..26b1a08 100644
 --- a/ethereum/dex/trades/insert_loopring.sql
 +++ b/ethereum/dex/trades/insert_loopring.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -766,8 +995,17 @@ index b7a7b4f..204185b 100644
                      c.call_block_time,
                      blockIdx::integer
                  ) as transaction,
+@@ -156,8 +156,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_luaswap.sql b/ethereum/dex/trades/insert_luaswap.sql
-index 348dca1..e18eb04 100644
+index 348dca1..da26f22 100644
 --- a/ethereum/dex/trades/insert_luaswap.sql
 +++ b/ethereum/dex/trades/insert_luaswap.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -779,8 +1017,17 @@ index 348dca1..e18eb04 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -78,8 +78,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_mistx.sql b/ethereum/dex/trades/insert_mistx.sql
-index e93faaa..d73379e 100644
+index e93faaa..03112b6 100644
 --- a/ethereum/dex/trades/insert_mistx.sql
 +++ b/ethereum/dex/trades/insert_mistx.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -792,8 +1039,28 @@ index e93faaa..d73379e 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -109,8 +109,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
+@@ -121,8 +119,8 @@ WITH rows AS (
+         AND pb.contract_address = dexs.token_b_address
+         AND pb.minute >= start_ts
+         AND pb.minute < end_ts
+-    WHERE ( tx."to" = '\xfcadf926669e7cad0e50287ea7d563020289ed2c' -- mistX Router for Sushi Contract address
+-    or tx."to" = '\xa58f22e0766b3764376c92915ba545d583c19dbc') -- mistX Router for Uniswap Contract address
++    WHERE ( tx."to" = '0xfcadf926669e7cad0e50287ea7d563020289ed2c' -- mistX Router for Sushi Contract address
++    or tx."to" = '0xa58f22e0766b3764376c92915ba545d583c19dbc') -- mistX Router for Uniswap Contract address
+     AND dexs.block_time >= start_ts
+     AND dexs.block_time < end_ts
+     ON CONFLICT DO NOTHING
 diff --git a/ethereum/dex/trades/insert_mooniswap.sql b/ethereum/dex/trades/insert_mooniswap.sql
-index 3eb231d..c13af4f 100644
+index 3eb231d..073ba95 100644
 --- a/ethereum/dex/trades/insert_mooniswap.sql
 +++ b/ethereum/dex/trades/insert_mooniswap.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -805,8 +1072,17 @@ index 3eb231d..c13af4f 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -82,8 +82,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_mstable.sql b/ethereum/dex/trades/insert_mstable.sql
-index 41564bd..70e796b 100644
+index 41564bd..ebde5e2 100644
 --- a/ethereum/dex/trades/insert_mstable.sql
 +++ b/ethereum/dex/trades/insert_mstable.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -818,8 +1094,17 @@ index 41564bd..70e796b 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -128,8 +128,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_oasis.sql b/ethereum/dex/trades/insert_oasis.sql
-index 2ec9365..b79547c 100644
+index 2ec9365..793a546 100644
 --- a/ethereum/dex/trades/insert_oasis.sql
 +++ b/ethereum/dex/trades/insert_oasis.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -831,8 +1116,17 @@ index 2ec9365..b79547c 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -116,8 +116,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_paraswap.sql b/ethereum/dex/trades/insert_paraswap.sql
-index 4c743c2..0d8d741 100644
+index 4c743c2..1ff958d 100644
 --- a/ethereum/dex/trades/insert_paraswap.sql
 +++ b/ethereum/dex/trades/insert_paraswap.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -844,8 +1138,17 @@ index 4c743c2..0d8d741 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -377,8 +377,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_powerindex.sql b/ethereum/dex/trades/insert_powerindex.sql
-index 5c4c50f..536a05f 100644
+index 5c4c50f..69bfa2b 100644
 --- a/ethereum/dex/trades/insert_powerindex.sql
 +++ b/ethereum/dex/trades/insert_powerindex.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -857,8 +1160,17 @@ index 5c4c50f..536a05f 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -128,8 +128,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_saddle.sql b/ethereum/dex/trades/insert_saddle.sql
-index 6f2d582..388b992 100644
+index 6f2d582..2cfafa9 100644
 --- a/ethereum/dex/trades/insert_saddle.sql
 +++ b/ethereum/dex/trades/insert_saddle.sql
 @@ -56,7 +56,7 @@ FlashLoanTokens AS (
@@ -870,8 +1182,17 @@ index 6f2d582..388b992 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -150,8 +150,6 @@ FlashLoanTokens AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_sakeswap.sql b/ethereum/dex/trades/insert_sakeswap.sql
-index ac0ad67..71c3a5e 100644
+index ac0ad67..13b214f 100644
 --- a/ethereum/dex/trades/insert_sakeswap.sql
 +++ b/ethereum/dex/trades/insert_sakeswap.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -883,8 +1204,17 @@ index ac0ad67..71c3a5e 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -80,8 +80,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_sfinance.sql b/ethereum/dex/trades/insert_sfinance.sql
-index d1473b5..cd5d19e 100644
+index d1473b5..4714268 100644
 --- a/ethereum/dex/trades/insert_sfinance.sql
 +++ b/ethereum/dex/trades/insert_sfinance.sql
 @@ -37,7 +37,7 @@ WITH rows AS (
@@ -896,7 +1226,16 @@ index d1473b5..cd5d19e 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
-@@ -156,7 +156,7 @@ WHERE NOT EXISTS (
+@@ -87,8 +87,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
+@@ -156,7 +154,7 @@ WHERE NOT EXISTS (
  
  INSERT INTO cron.job (schedule, command)
  VALUES ('*/10 * * * *', $$
@@ -906,7 +1245,7 @@ index d1473b5..cd5d19e 100644
          (SELECT now()),
          (SELECT max(number) FROM ethereum.blocks WHERE time < (SELECT max(block_time) - interval '1 days' FROM dex.trades WHERE project='S.finance')),
 diff --git a/ethereum/dex/trades/insert_shell.sql b/ethereum/dex/trades/insert_shell.sql
-index 1ebe40f..744622b 100644
+index 1ebe40f..88dd549 100644
 --- a/ethereum/dex/trades/insert_shell.sql
 +++ b/ethereum/dex/trades/insert_shell.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -918,8 +1257,17 @@ index 1ebe40f..744622b 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -81,8 +81,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_shibaswap.sql b/ethereum/dex/trades/insert_shibaswap.sql
-index 6872da0..1d136b7 100644
+index 6872da0..686013d 100644
 --- a/ethereum/dex/trades/insert_shibaswap.sql
 +++ b/ethereum/dex/trades/insert_shibaswap.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -931,8 +1279,17 @@ index 6872da0..1d136b7 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -80,8 +80,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_smoothy_finance.sql b/ethereum/dex/trades/insert_smoothy_finance.sql
-index f5bdb8e..2705f47 100644
+index f5bdb8e..68d2e31 100644
 --- a/ethereum/dex/trades/insert_smoothy_finance.sql
 +++ b/ethereum/dex/trades/insert_smoothy_finance.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -944,8 +1301,17 @@ index f5bdb8e..2705f47 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -99,8 +99,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_sushi.sql b/ethereum/dex/trades/insert_sushi.sql
-index 6ea795c..f9059ea 100644
+index 6ea795c..e036975 100644
 --- a/ethereum/dex/trades/insert_sushi.sql
 +++ b/ethereum/dex/trades/insert_sushi.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -957,8 +1323,17 @@ index 6ea795c..f9059ea 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -81,8 +81,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_swapr.sql b/ethereum/dex/trades/insert_swapr.sql
-index f648c28..4aa08e9 100644
+index f648c28..bd99b48 100644
 --- a/ethereum/dex/trades/insert_swapr.sql
 +++ b/ethereum/dex/trades/insert_swapr.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -970,8 +1345,30 @@ index f648c28..4aa08e9 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -80,8 +80,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
+diff --git a/ethereum/dex/trades/insert_synthetix.sql b/ethereum/dex/trades/insert_synthetix.sql
+index 88956ba..ad9501a 100644
+--- a/ethereum/dex/trades/insert_synthetix.sql
++++ b/ethereum/dex/trades/insert_synthetix.sql
+@@ -57,8 +57,6 @@ WITH rows AS (
+         ON tr.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     WHERE tr.block_time >= start_ts
+     AND tr.block_time < end_ts
+ 
 diff --git a/ethereum/dex/trades/insert_tokenlon.sql b/ethereum/dex/trades/insert_tokenlon.sql
-index 54dd256..d157c2b 100644
+index 54dd256..c3b616b 100644
 --- a/ethereum/dex/trades/insert_tokenlon.sql
 +++ b/ethereum/dex/trades/insert_tokenlon.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -1010,8 +1407,17 @@ index 54dd256..d157c2b 100644
              END AS token_b_address,
              t.contract_address AS exchange_contract_address,
              t.evt_tx_hash AS tx_hash,
+@@ -187,8 +187,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_unifi.sql b/ethereum/dex/trades/insert_unifi.sql
-index eff19ff..8dbb7dc 100644
+index eff19ff..84f467a 100644
 --- a/ethereum/dex/trades/insert_unifi.sql
 +++ b/ethereum/dex/trades/insert_unifi.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -1023,8 +1429,17 @@ index eff19ff..8dbb7dc 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -80,8 +80,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_uniswap_v1.sql b/ethereum/dex/trades/insert_uniswap_v1.sql
-index 9d75800..0459f04 100644
+index 9d75800..3bfd194 100644
 --- a/ethereum/dex/trades/insert_uniswap_v1.sql
 +++ b/ethereum/dex/trades/insert_uniswap_v1.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -1036,8 +1451,17 @@ index 9d75800..0459f04 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -105,8 +105,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_uniswap_v2.sql b/ethereum/dex/trades/insert_uniswap_v2.sql
-index 09ba269..648c732 100644
+index 09ba269..c126ed7 100644
 --- a/ethereum/dex/trades/insert_uniswap_v2.sql
 +++ b/ethereum/dex/trades/insert_uniswap_v2.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -1049,8 +1473,17 @@ index 09ba269..648c732 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -86,8 +86,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_uniswap_v3.sql b/ethereum/dex/trades/insert_uniswap_v3.sql
-index eacb655..3125689 100644
+index eacb655..61d28b3 100644
 --- a/ethereum/dex/trades/insert_uniswap_v3.sql
 +++ b/ethereum/dex/trades/insert_uniswap_v3.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -1062,8 +1495,17 @@ index eacb655..3125689 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -83,8 +83,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_xsigma.sql b/ethereum/dex/trades/insert_xsigma.sql
-index eef0637..e6063a6 100644
+index eef0637..f5ee9dd 100644
 --- a/ethereum/dex/trades/insert_xsigma.sql
 +++ b/ethereum/dex/trades/insert_xsigma.sql
 @@ -37,7 +37,7 @@ WITH rows AS (
@@ -1075,8 +1517,17 @@ index eef0637..e6063a6 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -89,8 +89,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_zeroex.sql b/ethereum/dex/trades/insert_zeroex.sql
-index f96bcba..816b239 100644
+index f96bcba..b853c3d 100644
 --- a/ethereum/dex/trades/insert_zeroex.sql
 +++ b/ethereum/dex/trades/insert_zeroex.sql
 @@ -36,7 +36,7 @@ WITH rows AS (
@@ -1088,6 +1539,15 @@ index f96bcba..816b239 100644
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
+@@ -203,8 +203,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/trades.sql b/ethereum/dex/trades/trades.sql
 index ccbd120..59ed4a4 100644
 --- a/ethereum/dex/trades/trades.sql
@@ -1403,7 +1863,7 @@ index 91ceec5..fbab6a4 100644
 +CREATE INDEX IF NOT EXISTS batches_idx_3 ON gnosis_protocol_v2.batches (num_trades);
 \ No newline at end of file
 diff --git a/ethereum/gnosis_protocol_v2/insert_batches.sql b/ethereum/gnosis_protocol_v2/insert_batches.sql
-index 7d34338..ff932db 100644
+index 7d34338..42b463e 100644
 --- a/ethereum/gnosis_protocol_v2/insert_batches.sql
 +++ b/ethereum/gnosis_protocol_v2/insert_batches.sql
 @@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION gnosis_protocol_v2.insert_batches(start_ts timestampt
@@ -1424,48 +1884,6 @@ index 7d34338..ff932db 100644
                             ELSE dex_swaps END                       as dex_swaps,
                         batch_value,
                         tx.gas_used / num_trades                     as gas_per_trade,
-@@ -125,15 +125,13 @@ WHERE NOT EXISTS(
- -- This captures new batches since the previous run, but also includes
- -- previously non-existent price data (since the price feed is slightly behind)
- INSERT INTO cron.job (schedule, command)
--VALUES ('*/5 * * * *', $$
--    BEGIN;
-+VALUES ('*/5 * * * *', 'BEGIN; DO $$ BEGIN
-     DELETE FROM gnosis_protocol_v2.batches
--        WHERE block_time >= (SELECT DATE_TRUNC('day', now()) - INTERVAL '1 days');
--    SELECT gnosis_protocol_v2.insert_batches(
--        (SELECT DATE_TRUNC('day', now()) - INTERVAL '1 days')
--    );
--    COMMIT;
--$$)
-+        WHERE block_time >= (SELECT DATE_TRUNC(''day'', now()) - INTERVAL ''1 days'');
-+    PERFORM gnosis_protocol_v2.insert_batches(
-+        (SELECT DATE_TRUNC(''day'', now()) - INTERVAL ''1 days'')
-+    ); END; $$; COMMIT;'
-+)
- ON CONFLICT (command) DO UPDATE SET schedule=EXCLUDED.schedule;
- 
- -- Once per day we go back 6 months repopulate the values.
-@@ -144,13 +142,11 @@ ON CONFLICT (command) DO UPDATE SET schedule=EXCLUDED.schedule;
- -- NOTE that we choose to run this job daily at 11 minutes past midnight,
- -- so not to compete with the every 5 minute job above and the updating trades table which this depends on.
- INSERT INTO cron.job (schedule, command)
--VALUES ('11 0 * * *', $$
--    BEGIN;
-+VALUES ('11 0 * * *', 'BEGIN; DO $$ BEGIN
-     DELETE FROM gnosis_protocol_v2.batches
--        WHERE block_time >= (SELECT DATE_TRUNC('day', now()) - INTERVAL '6 months');
--    SELECT gnosis_protocol_v2.insert_batches(
--        (SELECT DATE_TRUNC('day', now()) - INTERVAL '6 months')
--    );
--    COMMIT;
--$$)
-+        WHERE block_time >= (SELECT DATE_TRUNC(''day'', now()) - INTERVAL ''6 months'');
-+    PERFORM gnosis_protocol_v2.insert_batches(
-+        (SELECT DATE_TRUNC(''day'', now()) - INTERVAL ''6 months'')
-+    ); END; $$; COMMIT;'
-+)
- ON CONFLICT (command) DO UPDATE SET schedule=EXCLUDED.schedule;
 diff --git a/ethereum/gnosis_protocol_v2/insert_trades.sql b/ethereum/gnosis_protocol_v2/insert_trades.sql
 index 3aa52c6..30ac7cb 100644
 --- a/ethereum/gnosis_protocol_v2/insert_trades.sql
@@ -2032,61 +2450,58 @@ index 498ef27..df12fd0 100644
  COPY nftwallets.opensea_users (nft_wallet, opensea_user) FROM stdin; 
  \\xe301612b0751f6d862a27be205fb8e3c40c8c6db	'----------------------'
 diff --git a/ethereum/nft/trades/insert_LooksRare.sql b/ethereum/nft/trades/insert_LooksRare.sql
-index b915bd9..55832ec 100644
+index b915bd9..fd44da1 100644
 --- a/ethereum/nft/trades/insert_LooksRare.sql
 +++ b/ethereum/nft/trades/insert_LooksRare.sql
-@@ -197,10 +197,6 @@ ROWS AS (
-             
-         FROM looks_rare) trades
+@@ -199,8 +199,6 @@ ROWS AS (
      INNER JOIN ethereum.transactions tx ON trades.tx_hash = tx.hash
--        AND tx.block_time >= start_ts
--        AND tx.block_time < end_ts
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
 -        AND tx.block_number >= start_block
 -        AND tx.block_number < end_block
      LEFT JOIN looksrare_erc_subsets erc ON erc.evt_tx_hash = trades.tx_hash
      LEFT JOIN nft.tokens tokens ON tokens.contract_address = trades.nft_contract_address
      LEFT JOIN prices.usd p ON p.minute = date_trunc('minute', trades.block_time)
 diff --git a/ethereum/nft/trades/insert_cryptopunks.sql b/ethereum/nft/trades/insert_cryptopunks.sql
-index 20beba9..0e5b8a8 100644
+index 20beba9..18dda02 100644
 --- a/ethereum/nft/trades/insert_cryptopunks.sql
 +++ b/ethereum/nft/trades/insert_cryptopunks.sql
-@@ -148,12 +148,7 @@ rows AS (
-                 'Trade' AS evt_type,
-                 *
-             FROM punks_agg_tx) trades
--    INNER JOIN ethereum.transactions tx
--        ON trades.evt_tx_hash = tx.hash
--        AND tx.block_time >= start_ts
--        AND tx.block_time < end_ts
+@@ -152,8 +152,6 @@ rows AS (
+         ON trades.evt_tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
 -        AND tx.block_number >= start_block
 -        AND tx.block_number < end_block
-+    INNER JOIN ethereum.transactions tx ON trades.evt_tx_hash = tx.hash
      LEFT JOIN prices.usd p ON p.minute = date_trunc('minute', trades.evt_block_time)
          AND p.contract_address = '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
          AND p.minute >= start_ts
 diff --git a/ethereum/nft/trades/insert_foundation.sql b/ethereum/nft/trades/insert_foundation.sql
-index f84ef96..752b50e 100644
+index f84ef96..a2fd43a 100644
 --- a/ethereum/nft/trades/insert_foundation.sql
 +++ b/ethereum/nft/trades/insert_foundation.sql
-@@ -129,12 +129,7 @@ rows AS (
-             'Trade' AS evt_type,
-             *
-         FROM foundation."market_evt_ReserveAuctionFinalized") trades
--    INNER JOIN ethereum.transactions tx
--        ON trades.evt_tx_hash = tx.hash
--        AND tx.block_time >= start_ts
--        AND tx.block_time < end_ts
+@@ -133,8 +133,6 @@ rows AS (
+         ON trades.evt_tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
 -        AND tx.block_number >= start_block
 -        AND tx.block_number < end_block
-+    INNER JOIN ethereum.transactions tx ON trades.evt_tx_hash = tx.hash
      LEFT JOIN foundation_erc_subsets erc ON erc.evt_tx_hash = trades.evt_tx_hash
      LEFT JOIN foundation."market_evt_ReserveAuctionCreated" created ON trades."auctionId" = created."auctionId"
      LEFT JOIN nft.tokens tokens ON tokens.contract_address = created."nftContract"
 diff --git a/ethereum/nft/trades/insert_opensea.sql b/ethereum/nft/trades/insert_opensea.sql
-index b6f4d62..3a53e94 100644
+index b6f4d62..7c1bdbd 100644
 --- a/ethereum/nft/trades/insert_opensea.sql
 +++ b/ethereum/nft/trades/insert_opensea.sql
-@@ -160,12 +160,7 @@ rows AS (
+@@ -146,7 +146,7 @@ rows AS (
+         tx."to" AS tx_to,
+         call_trace_address AS trace_address,
+         trades.evt_index,
+-        row_number() OVER (PARTITION BY trades.platform, trades.evt_tx_hash, trades.evt_index, trades.category ORDER BY trades.platform_version, trades.evt_type) AS trade_id
++        row_number() OVER (PARTITION BY trades.platform, trades.evt_tx_hash, trades.category ORDER BY trades.platform_version, trades.evt_type) AS trade_id
+     FROM
+         (SELECT 
+             'OpenSea' AS platform,
+@@ -160,15 +160,11 @@ rows AS (
              evt_block_number,
              evt_index
          FROM opensea."WyvernExchange_evt_OrdersMatched") trades
@@ -2096,12 +2511,16 @@ index b6f4d62..3a53e94 100644
 -        AND tx.block_time < end_ts
 -        AND tx.block_number >= start_block
 -        AND tx.block_number < end_block
-+    INNER JOIN ethereum.transactions tx ON trades.evt_tx_hash = tx.hash
      LEFT JOIN opensea_erc_subsets erc ON erc.evt_tx_hash = trades.evt_tx_hash
      LEFT JOIN wyvern_calldata wc ON wc.call_tx_hash = trades.evt_tx_hash
      LEFT JOIN nft.tokens tokens ON tokens.contract_address = wc.nft_contract_address
++    INNER JOIN ethereum.transactions tx
++        ON trades.evt_tx_hash = tx.hash
+     LEFT JOIN prices.usd p ON p.minute = date_trunc('minute', trades.evt_block_time)
+         AND p.contract_address = wc.currency_token
+         AND p.minute >= start_ts
 diff --git a/ethereum/nft/trades/insert_rarible.sql b/ethereum/nft/trades/insert_rarible.sql
-index 8830684..9d34ac8 100644
+index 8830684..21fdce1 100644
 --- a/ethereum/nft/trades/insert_rarible.sql
 +++ b/ethereum/nft/trades/insert_rarible.sql
 @@ -165,8 +165,8 @@ WITH rarible_trades AS (
@@ -2186,22 +2605,17 @@ index 8830684..9d34ac8 100644
  ),
  -- Get ERC721 and ERC1155 transfer data for every trade transaction
  rarible_erc_union AS (
-@@ -352,12 +340,7 @@ rows AS (
-         row_number() OVER (PARTITION BY platform, trades.evt_tx_hash, trades.evt_index, category ORDER BY platform_version, evt_type) AS trade_id
-     FROM
-         rarible_trades trades
--    INNER JOIN ethereum.transactions tx
--        ON trades.evt_tx_hash = tx.hash
--        AND tx.block_time >= start_ts
--        AND tx.block_time < end_ts
+@@ -356,8 +344,6 @@ rows AS (
+         ON trades.evt_tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
 -        AND tx.block_number >= start_block
 -        AND tx.block_number < end_block
-+    INNER JOIN ethereum.transactions tx ON trades.evt_tx_hash = tx.hash
      LEFT JOIN rarible_erc_subsets erc ON erc.evt_tx_hash = trades.evt_tx_hash
      LEFT JOIN erc20.tokens erc20 ON erc20.contract_address = trades.currency_contract
      LEFT JOIN nft.tokens tokens ON tokens.contract_address = trades.nft_contract_address
 diff --git a/ethereum/nft/trades/insert_superrare.sql b/ethereum/nft/trades/insert_superrare.sql
-index 3813b1e..1f71cf9 100644
+index 3813b1e..99484fd 100644
 --- a/ethereum/nft/trades/insert_superrare.sql
 +++ b/ethereum/nft/trades/insert_superrare.sql
 @@ -21,7 +21,7 @@ WITH superrare_trades AS (
@@ -2267,25 +2681,20 @@ index 3813b1e..1f71cf9 100644
      AND
          topic1 = '\xea6d16c6bfcad11577aef5cc6728231c9f069ac78393828f8ca96847405902a9'
  ), 
-@@ -301,12 +301,7 @@ rows AS (
-         row_number() OVER (PARTITION BY platform, trades.tx_hash, trades.evt_index, category ORDER BY platform_version, evt_type) AS trade_id
-     FROM
- 	superrare_trades trades
--    INNER JOIN ethereum.transactions tx
--        ON trades.tx_hash = tx.hash
--        AND tx.block_time >= start_ts
--        AND tx.block_time < end_ts
+@@ -305,8 +305,6 @@ rows AS (
+         ON trades.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
 -        AND tx.block_number >= start_block
 -        AND tx.block_number < end_block
-+    INNER JOIN ethereum.transactions tx ON trades.tx_hash = tx.hash
      LEFT JOIN superrare_erc_subsets erc ON erc.evt_tx_hash = trades.tx_hash
      LEFT JOIN prices.usd p ON p.minute = date_trunc('minute', trades.block_time)
          AND p.contract_address = '\xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'
 diff --git a/ethereum/nft_traits/apedao_remix_traits.sql b/ethereum/nft_traits/apedao_remix_traits.sql
-index 9d73ace..3dea710 100644
+index 9d73ace..c6e8809 100644
 --- a/ethereum/nft_traits/apedao_remix_traits.sql
 +++ b/ethereum/nft_traits/apedao_remix_traits.sql
-@@ -1,7 +1,12 @@
+@@ -1,14 +1,19 @@
  BEGIN;
  CREATE SCHEMA IF NOT EXISTS apedao;
  
@@ -2299,255 +2708,213 @@ index 9d73ace..3dea710 100644
  CREATE TABLE IF NOT EXISTS apedao.apedao_remix_traits (
      token_id smallint NOT NULL PRIMARY KEY,
      artist text NOT NULL,
-@@ -5560,7 +5565,8 @@ VALUES
- (4, 'lurklovesyou', 'basic', 2449),
- (3, 'lurklovesyou', 'basic', 5148),
- (2, 'Kyokill', 'basic', 6516),
--(1, 'ytopp', 'silver', 5145);
-+(1, 'ytopp', 'silver', 5145)
-+ON CONFLICT DO NOTHING;
- 
- CREATE INDEX IF NOT EXISTS apedao_remix_artist_idx ON apedao.apedao_remix_traits (artist);
- CREATE INDEX IF NOT EXISTS apedao_remix_tier_idx ON apedao.apedao_remix_traits (tier);
+     tier apedao.apedao_remix_tier NOT NULL,
+     bayc smallint NOT NULL
+ );
+-
++TRUNCATE TABLE apedao.apedao_remix_traits ;
+ INSERT INTO apedao.apedao_remix_traits(token_id, artist, tier, bayc)
+ VALUES
+ (5531, 'technoveins', 'basic', 5161),
 diff --git a/ethereum/nft_traits/bucketsclub.sql b/ethereum/nft_traits/bucketsclub.sql
-index b19a205..5f04cbf 100644
+index b19a205..b807e34 100644
 --- a/ethereum/nft_traits/bucketsclub.sql
 +++ b/ethereum/nft_traits/bucketsclub.sql
-@@ -1,6 +1,8 @@
- BEGIN;
- CREATE SCHEMA IF NOT EXISTS bucketsclub;
- 
-+DROP TABLE IF EXISTS bucketsclub.body;
-+
- CREATE TABLE IF NOT EXISTS bucketsclub.body (
-     body_type VARCHAR(90),
+@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS bucketsclub.body (
      os_link VARCHAR(90),
-@@ -1007,7 +1009,8 @@ VALUES
-     ('Greyson Buckets','https://opensea.io/assets/0x025f45bb7e08abea27a3c6a9cfb8d2acc2f6a134/13',13),
-     ('Lyle Scott Buckets','https://opensea.io/assets/0x025f45bb7e08abea27a3c6a9cfb8d2acc2f6a134/126',126),
-     ('Gummo Buckets','https://opensea.io/assets/0x025f45bb7e08abea27a3c6a9cfb8d2acc2f6a134/124',124),
--    ('Tortoise Frame Rope Cap Buckets','https://opensea.io/assets/0x025f45bb7e08abea27a3c6a9cfb8d2acc2f6a134/128',128);
-+    ('Tortoise Frame Rope Cap Buckets','https://opensea.io/assets/0x025f45bb7e08abea27a3c6a9cfb8d2acc2f6a134/128',128)
-+    ON CONFLICT DO NOTHING;
- 
- CREATE INDEX IF NOT EXISTS bucketsclub__body_idx ON bucketsclub.body USING BRIN (nft_token_id);
- 
+     nft_token_id SMALLINT PRIMARY KEY
+ );
+-
++TRUNCATE TABLE bucketsclub.body ;
+ INSERT INTO bucketsclub.body(body_type, os_link, nft_token_id)
+ VALUES
+   ('Dancing Buckets (Green)','https://opensea.io/assets/0x025f45bb7e08abea27a3c6a9cfb8d2acc2f6a134/790',790),
 diff --git a/ethereum/nft_traits/cryptobulls_traits.sql b/ethereum/nft_traits/cryptobulls_traits.sql
-index 31b311e..d172304 100644
+index 31b311e..772f6aa 100644
 --- a/ethereum/nft_traits/cryptobulls_traits.sql
 +++ b/ethereum/nft_traits/cryptobulls_traits.sql
-@@ -2,6 +2,8 @@
- BEGIN;
- CREATE SCHEMA IF NOT EXISTS cryptobulls;
- 
-+DROP TABLE IF EXISTS cryptobulls.cryptobulls_traits;
-+
- CREATE TABLE IF NOT EXISTS cryptobulls.cryptobulls_traits(
-    token_id    SMALLINT PRIMARY KEY,
-    clothing    VARCHAR(90),
-@@ -7794,7 +7796,8 @@ VALUES
- (7774, 'Green Leaf', 'Black', '', '', 'Green', 'Orange Beret', 'Glass', '', '', ''),
- (7775, 'Green Leaf', 'White', '', 'Cuban Cigar', 'Blue', '', 'Leather', 'Silver Triangle', '', ''),
- (7776, 'Hoodie Red', 'Blue', '', 'Cigarette', 'Lizard', 'Bull Cap', 'Wooden', '', '', ''),
--(7777, 'Hoodie Black CBS', 'Black', 'Silver Thunder', '', 'Orange', '', 'Metal', '', '', '');
-+(7777, 'Hoodie Black CBS', 'Black', 'Silver Thunder', '', 'Orange', '', 'Metal', '', '', '')
-+ON CONFLICT DO NOTHING;
- 
- 
- CREATE INDEX IF NOT EXISTS cryptobulls_traits_idx ON cryptobulls.cryptobulls_traits USING BRIN (token_id);
+@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS cryptobulls.cryptobulls_traits(
+    neck        VARCHAR(90),
+    teeth       VARCHAR(90)
+ );
+-
++TRUNCATE TABLE cryptobulls.cryptobulls_traits ;
+ INSERT INTO cryptobulls.cryptobulls_traits(token_id, clothing, fur, earring, smoking, eyes, hat, horns, nose, neck, teeth)
+ VALUES
+ (1, 'Hoodie Purple', 'Brown', '', '', 'Heart', 'Orange Beret', 'Original', '', '', ''),
 diff --git a/ethereum/nft_traits/cryptocoven_traits.sql b/ethereum/nft_traits/cryptocoven_traits.sql
-index 105a876..4a076df 100644
+index 105a876..cb49b5c 100644
 --- a/ethereum/nft_traits/cryptocoven_traits.sql
 +++ b/ethereum/nft_traits/cryptocoven_traits.sql
-@@ -1,6 +1,8 @@
- BEGIN;
- CREATE SCHEMA IF NOT EXISTS cryptocoven;
- 
-+DROP TABLE IF EXISTS cryptocoven.cryptocoven_traits;
-+
- CREATE TABLE IF NOT EXISTS cryptocoven.cryptocoven_traits(
-    token_id                 SMALLINT PRIMARY KEY,
-    archetype_of_power       VARCHAR(90),
-@@ -9791,7 +9793,8 @@ VALUES
- (9750, 'Seer', '', 'Plum', 'Lithe', 'Demeulemeester (White)', 'Blank', 'Sylv', 'Sylv (White)', '', '', 'Curse Tag', '', 'Sylv', '', 'White', '', 'Sylv (Black)', 'Yohji', 'Gemini', '', '', '', 'Leo', 'Twilight', 'Sagittarius', '', 0, 9, 3, 2, 9, 9),
- (9751, 'Necromancer', '', 'Rust', 'Lithe', '', 'Blue', 'Babylash', 'Fluffy (Brown)', '', 'Moth Gauze', '', '', 'Pixie', '', 'Warm Brown', '', '', '', 'Pisces', 'Smirk (Peach)', '', '', 'Cancer', 'Dawn', 'Cancer', 'Filmy Edwardian (White)', 1, 3, 6, 6, 8, 9),
- (9752, 'Seer', '', 'Moss', 'Chiseled', '', 'Amber', 'Starman', 'Starman (Brown)', '', '', '', '', 'Starman', '', 'Roguish Blonde', '', '', '', 'Aries', 'Thin Smirk (Orange)', 'Ethereum Thread (Natural)', '', 'Virgo', 'Dawn', 'Aquarius', 'Open Collar (Flint)', 9, 7, 9, 7, 0, 9),
--(9753, 'Seer', '', 'Pink', 'Chiseled', '', '', '', 'Arched (Brown)', '', '', 'Astrea (Gold)', '', 'Astrea', '', 'White', '', '', '', 'Pisces', '', 'Astrea (Gold)', '', 'Sagittarius', 'Dawn', 'Taurus', 'Astrea (Red)', 9, 9, 9, 7, 3, 8);
-+(9753, 'Seer', '', 'Pink', 'Chiseled', '', '', '', 'Arched (Brown)', '', '', 'Astrea (Gold)', '', 'Astrea', '', 'White', '', '', '', 'Pisces', '', 'Astrea (Gold)', '', 'Sagittarius', 'Dawn', 'Taurus', 'Astrea (Red)', 9, 9, 9, 7, 3, 8)
-+ON CONFLICT DO NOTHING;
- 
- CREATE INDEX IF NOT EXISTS cryptocoven_traits_idx ON cryptocoven.cryptocoven_traits USING BRIN (token_id);
- 
+@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS cryptocoven.cryptocoven_traits(
+    woe                      SMALLINT,
+    wonder                   SMALLINT
+ );
+-
++TRUNCATE TABLE cryptocoven.cryptocoven_traits ;
+ INSERT INTO cryptocoven.cryptocoven_traits (token_id, archetype_of_power, back_item, background, body_shape, earrings, eye_color, eye_style, eyebrows, face_markings, facewear, forehead_jewelry, hair_back, hair_front, hair_middle, hair_color, hair_topper, hat, mask, moon_sign, mouth, necklace, outerwear, rising_sign, skin_tone, sun_sign, top, wiles, will, wisdom, wit, woe, wonder)
+ VALUES
+ (1, 'Witch of Woe', '', 'Sepia', 'Lithe', '', 'Cloud', 'Nyx', 'Medium Flat (Black)', '', '', '', 'Nyx Long', 'Nyx', '', 'Steel', '', 'Witch (Black)', '', 'Aquarius', 'Nyx (Mocha)', 'Moon Necklace (Silver)', '', 'Capricorn', 'Dawn', 'Taurus', 'Sheer Top (Black)', 9, 9, 9, 9, 10, 9),
 diff --git a/ethereum/nft_traits/daopunks_traits.sql b/ethereum/nft_traits/daopunks_traits.sql
-index 7c23610..813c83e 100644
+index 7c23610..b1de693 100644
 --- a/ethereum/nft_traits/daopunks_traits.sql
 +++ b/ethereum/nft_traits/daopunks_traits.sql
-@@ -1123,7 +1123,8 @@ VALUES
- (1108, 'Crypto Native', 'Shadowy', 'B Punk DAOmensional - Bankless Red', '', '', 'Robot Blue'),
- (1109, 'Creative', 'Unicorn Pink', 'Memelord Couture - Bankless Red', '', '', ''),
- (1110, 'Crypto Native', 'Liquidity Blue', 'Streetwear', 'GM Red Socks', 'GM Purple', 'Robot Purple'),
--(1111, 'Creative', 'Unicorn Pink', 'Memelord Sporty Punk - Purple Node', '', 'WAGMI Wave Sushi Rice White', '');
-+(1111, 'Creative', 'Unicorn Pink', 'Memelord Sporty Punk - Purple Node', '', 'WAGMI Wave Sushi Rice White', '')
-+ON CONFLICT DO NOTHING;
- 
- CREATE INDEX IF NOT EXISTS daopunks_traits_idx ON daopunks.daopunks_traits USING BRIN (token_id);
- 
+@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS daopunks.daopunks_traits(
+    graphic      VARCHAR(90),
+    head         VARCHAR(90)
+ );
+-
++TRUNCATE TABLE daopunks.daopunks_traits ;
+ INSERT INTO daopunks.daopunks_traits(token_id, archetype, background, clothes, color, graphic, head)
+ VALUES
+ (1, 'ANON', 'Shadowy', 'Cypherpunk', '', 'TAO DAO', 'Heart Sunglasses'),
 diff --git a/ethereum/nft_traits/incooom_genesis_traits.sql b/ethereum/nft_traits/incooom_genesis_traits.sql
-index f6cc113..04cf0f2 100644
+index f6cc113..929f13b 100644
 --- a/ethereum/nft_traits/incooom_genesis_traits.sql
 +++ b/ethereum/nft_traits/incooom_genesis_traits.sql
-@@ -2927,7 +2927,8 @@ VALUES
- ( 2912, 'Ten', 'Spades', 'PYSCHEDELIC', 54, 34 ),
- ( 2913, 'Five', 'Spades', 'PYSCHEDELIC', 54, 42 ),
- ( 2914, 'Jack', 'Hearts', 'PYSCHEDELIC', 54, 9 ),
--( 2915, 'Eight', 'Hearts', 'PYSCHEDELIC', 54, 45 );
-+( 2915, 'Eight', 'Hearts', 'PYSCHEDELIC', 54, 45 )
-+ON CONFLICT DO NOTHING;
- 
- CREATE INDEX IF NOT EXISTS incooom_genesis_traits_idx ON incooom.incooom_genesis_traits USING BRIN (token_id);
- 
+@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS incooom.incooom_genesis_traits(
+     deck_number INT NOT NULL,
+     card_in_deck_number INT NOT NULL
+ );
+-
++TRUNCATE TABLE incooom.incooom_genesis_traits ;
+ INSERT INTO incooom.incooom_genesis_traits (token_id, card_value, card_suit, deck_type, deck_number, card_in_deck_number)
+ VALUES
+ ( 0, 'Seven', 'Hearts', 'PYSCHEDELIC', 1, 5 ),
 diff --git a/ethereum/nft_traits/incooom_kings_gala_traits.sql b/ethereum/nft_traits/incooom_kings_gala_traits.sql
-index b272ce5..265e8e1 100644
+index b272ce5..8f8eaf0 100644
 --- a/ethereum/nft_traits/incooom_kings_gala_traits.sql
 +++ b/ethereum/nft_traits/incooom_kings_gala_traits.sql
-@@ -3611,7 +3611,8 @@ INSERT INTO incooom.incooom_kings_gala_traits(token_id, background, legs, body,
-     (3600,'Pea','Troll','Pumpkin','Samurai','Dragon','Monk','Frankenstein'),
-     (3568,'Purple','Zeus','Wizard','Baseball33','Elf','OOO','Pumpkin'),
-     (3593,'Pea','SpecialOOOps','Baseball33','Dracula','Devil','Zeus','Orc'),
--    (3596,'Gray','Devil','Zeus','Pirate','Astronaut','Alien','SpecialOOOps');
-+    (3596,'Gray','Devil','Zeus','Pirate','Astronaut','Alien','SpecialOOOps')
-+    ON CONFLICT DO NOTHING;
- 
- CREATE INDEX IF NOT EXISTS incooom_kings_gala_traits_idx ON incooom.incooom_kings_gala_traits USING BRIN (token_id);
- 
+@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS incooom.incooom_kings_gala_traits(
+     head VARCHAR(50) NOT NULL,
+     hands VARCHAR(50) NOT NULL
+ );
+-
++TRUNCATE TABLE incooom.incooom_kings_gala_traits ;
+ INSERT INTO incooom.incooom_kings_gala_traits(token_id, background, legs, body, wrists, arms, head, hands)
+     VALUES
+     (1,'GoldenTicket','Monk','Monk','Monk','Monk','Monk','Monk'),
 diff --git a/ethereum/nft_traits/linksdao_membership.sql b/ethereum/nft_traits/linksdao_membership.sql
-index 08cae76..044c85a 100644
+index 08cae76..ec29914 100644
 --- a/ethereum/nft_traits/linksdao_membership.sql
 +++ b/ethereum/nft_traits/linksdao_membership.sql
-@@ -1,6 +1,8 @@
- BEGIN;
- CREATE SCHEMA IF NOT EXISTS linksdao;
- 
-+DROP TABLE IF EXISTS linksdao.linksdao_traits;
-+
- CREATE TABLE IF NOT EXISTS linksdao.linksdao_traits(
-     token_id SMALLINT PRIMARY KEY,
+@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS linksdao.linksdao_traits(
      membership VARCHAR(8)         
-@@ -9099,7 +9101,8 @@ VALUES
- ('9087','Global'),
- ('9088','Global'),
- ('9089','Global'),
--('9090','Global');
-+('9090','Global')
-+ON CONFLICT DO NOTHING;
+ );
  
- 
- CREATE INDEX IF NOT EXISTS linksdao_traits_idx ON linksdao.linksdao_traits USING BRIN (token_id);
+-
++TRUNCATE TABLE linksdao.linksdao_traits ;
+ INSERT INTO linksdao.linksdao_traits (token_id, membership)
+ VALUES
+ ('0','Leisure'),
 diff --git a/ethereum/nft_traits/loot_attributes.sql b/ethereum/nft_traits/loot_attributes.sql
-index 7996856..ac07060 100644
+index 7996856..617b29a 100644
 --- a/ethereum/nft_traits/loot_attributes.sql
 +++ b/ethereum/nft_traits/loot_attributes.sql
-@@ -8011,6 +8011,7 @@ VALUES
- ('4562','Falchion','Ornate Chestplate','Linen Hood','War Belt','Wool Shoes','Silk Gloves','Pendant','Bronze Ring'),
- ('3102','Quarterstaff','Silk Robe','Linen Hood','Wool Sash','Divine Slippers','Studded Leather Gloves','Pendant','Silver Ring'),
- ('1980','Grave Wand','Linen Robe','Divine Hood','Plated Belt','Chain Boots','Heavy Gloves','Pendant','Bronze Ring'),
--('1039','Grave Wand','Chain Mail','Hood','Silk Sash','Chain Boots','Wool Gloves','Pendant','Bronze Ring');
-+('1039','Grave Wand','Chain Mail','Hood','Silk Sash','Chain Boots','Wool Gloves','Pendant','Bronze Ring')
-+ON CONFLICT DO NOTHING;
- 
- CREATE INDEX IF NOT EXISTS loot_loot_attributes_idx ON loot.loot_attributes USING BRIN (token_id);
-\ No newline at end of file
+@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS loot.loot_attributes (
+     neck text,
+     ring text
+ );
+-
++TRUNCATE TABLE loot.loot_attributes ;
+ INSERT INTO loot.loot_attributes (token_id, weapon, chest, head, waist, foot, hand, neck, ring)
+ VALUES
+ ('3043','Tome','Hard Leather Armor of Anger','Woe Grasp Hood of the Twins +1','Rage Shout Sash of Protection +1','Demonhide Boots of the Fox','Sorrow Bite Silk Gloves of the Fox +1','Amulet of Titans','Titanium Ring of the Twins'),
 diff --git a/ethereum/nft_traits/luchadores_traits.sql b/ethereum/nft_traits/luchadores_traits.sql
-index fc642c9..3925774 100644
+index fc642c9..6deae49 100644
 --- a/ethereum/nft_traits/luchadores_traits.sql
 +++ b/ethereum/nft_traits/luchadores_traits.sql
-@@ -2,7 +2,7 @@ BEGIN;
+@@ -2,8 +2,6 @@ BEGIN;
  
  CREATE SCHEMA IF NOT EXISTS luchadores;
  
 -DROP TABLE luchadores.attributes;
-+DROP TABLE IF EXISTS luchadores.attributes;
- 
+-
  CREATE TABLE IF NOT EXISTS luchadores.attributes(
      id SMALLINT PRIMARY KEY,
-@@ -10018,7 +10018,8 @@ INSERT INTO luchadores.attributes(id, attributes_amount, spirit, cape, torso, ar
- (9997,3,NULL,NULL,'Shirt','Wrist Bands','Bolt',NULL,NULL,NULL,false),
- (9998,3,'Jaguar','Hooded',NULL,NULL,NULL,NULL,'Tights',NULL,false),
- (9999,3,NULL,NULL,'Open Shirt','Sleeves','Classic',NULL,NULL,NULL,false),
--(10000,3,NULL,NULL,NULL,'Left Band','Bolt',NULL,'Tights',NULL,false);
-+(10000,3,NULL,NULL,NULL,'Left Band','Bolt',NULL,'Tights',NULL,false)
-+ON CONFLICT DO NOTHING;
- 
- 
- CREATE INDEX IF NOT EXISTS lucha_attributes_index ON luchadores.attributes USING BRIN (id);
+     attributes_amount SMALLINT,
+@@ -17,7 +15,7 @@ CREATE TABLE IF NOT EXISTS luchadores.attributes(
+     boots VARCHAR(30),
+     hidden_mustache BOOLEAN
+ );
+-
++TRUNCATE TABLE luchadores.attributes ;
+ INSERT INTO luchadores.attributes(id, attributes_amount, spirit, cape, torso, arms, mask, mouth, bottom, boots, hidden_mustache) VALUES
+ (1,3,NULL,NULL,'Suspenders','Gloves','Striped',NULL,NULL,NULL,false),
+ (2,3,NULL,NULL,NULL,'Arm Bands','Split',NULL,NULL,'Two Tone',false),
 diff --git a/ethereum/nft_traits/on1_force_traits.sql b/ethereum/nft_traits/on1_force_traits.sql
-index 32de78e..e5477fd 100644
+index 32de78e..0d27f46 100644
 --- a/ethereum/nft_traits/on1_force_traits.sql
 +++ b/ethereum/nft_traits/on1_force_traits.sql
-@@ -7799,7 +7799,8 @@ VALUES
- (7774, 'Citrine', 'Citrine', '', '0N1 Logo Pin (Black)', 'Half Open (Jasper)', 'PR Mask (Turqouise)', 'Bob (Obsidian)', 'Headphones (Rose)', '', 'Neutral', 5, 2, 5, 'Y0K-A1', 'Kimono (Rose)', 'https://ipfs.io/ipfs/QmcoavNZq2jyZGe2Zi4nanQqzU9hRPxunHAo8pgYZ5fSep/7774.png'),
- (7775, 'Light Smoke', 'Type-01', '', '0N1 Logo Pin (White)', 'Open (Azurite)', 'V-Shades', 'Long (Citirine)', 'Earbuds', '', 'Neutral', 7, 7, 7, 'B4K3M0-N0', 'Bomber Jacket (Jasper/Obsidian)', 'https://ipfs.io/ipfs/QmcoavNZq2jyZGe2Zi4nanQqzU9hRPxunHAo8pgYZ5fSep/7775.png'),
- (7776, 'Jasper', 'Type-01', '', 'Loop Earring', 'Open (Jasper)', 'Vape', 'Pixie (Citrine)', 'Void', '', 'Neutral', 8, 7, 5, 'B4K3M0-N0', 'Dress (Obsidian)', 'https://ipfs.io/ipfs/QmcoavNZq2jyZGe2Zi4nanQqzU9hRPxunHAo8pgYZ5fSep/7776.png'),
--(7777, 'Jasper', 'Citrine', '', '0N1 Logo Pin (White)', 'Open (Citrine)', 'PR Mask (Jasper)', 'Long (Obsidian)', 'Void', '', 'Smirk', 1, 4, 3, 'Y0K-A1', 'T-Shirt (Obsidian)', 'https://ipfs.io/ipfs/QmcoavNZq2jyZGe2Zi4nanQqzU9hRPxunHAo8pgYZ5fSep/7777.png');
-+(7777, 'Jasper', 'Citrine', '', '0N1 Logo Pin (White)', 'Open (Citrine)', 'PR Mask (Jasper)', 'Long (Obsidian)', 'Void', '', 'Smirk', 1, 4, 3, 'Y0K-A1', 'T-Shirt (Obsidian)', 'https://ipfs.io/ipfs/QmcoavNZq2jyZGe2Zi4nanQqzU9hRPxunHAo8pgYZ5fSep/7777.png')
-+ON CONFLICT DO NOTHING;
- 
- CREATE INDEX IF NOT EXISTS on1_force_traits_idx ON on1_force.on1_force_traits USING BRIN (token_id);
- 
+@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS on1_force.on1_force_traits(
+    wear         TEXT,
+    image_url    TEXT
+ );
+-
++TRUNCATE TABLE on1_force.on1_force_traits ;
+ INSERT INTO on1_force.on1_force_traits(token_id, background, body, domain, extra, eyes, face, hair, head, helmet, mouth, spirit, strength, style, type, wear, image_url)
+ VALUES
+ (1, 'Jasper', 'Jasper', '', 'Void', 'Eye Shadow (Jasper)', 'PR Mask (Citrine)', 'Bob (Obsidian)', 'Void', '', 'Frown', 4, 5, 4, 'Y0K-A1', 'Track Jacket (Obsidian)', 'https://ipfs.io/ipfs/QmcoavNZq2jyZGe2Zi4nanQqzU9hRPxunHAo8pgYZ5fSep/0001.png'),
 diff --git a/ethereum/nft_traits/rumblekong_stats.sql b/ethereum/nft_traits/rumblekong_stats.sql
-index ccdf651..f0b61e1 100644
+index ccdf651..b079c60 100644
 --- a/ethereum/nft_traits/rumblekong_stats.sql
 +++ b/ethereum/nft_traits/rumblekong_stats.sql
-@@ -10010,6 +10010,7 @@ VALUES
-  ('9996',36,48,63,39,186,113),
-  ('9997',59,23,58,77,217,82),
-  ('9998',65,24,59,62,210,89),
-- ('9999',51,42,44,53,190,109);
-+ ('9999',51,42,44,53,190,109)
-+ ON CONFLICT DO NOTHING;
- 
- CREATE INDEX IF NOT EXISTS rumblekong_stats_idx ON rumblekongleague.rumblekong_stats USING BRIN (token_id);
-\ No newline at end of file
+@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS rumblekongleague.rumblekong_stats (
+ 	total_boost	INTEGER,
+ 	rank_by_boost INTEGER
+ );
+-
++TRUNCATE TABLE rumblekongleague.rumblekong_stats ;
+ INSERT INTO rumblekongleague.rumblekong_stats (token_id, shooting, finish, defense, vision, total_boost, rank_by_boost)
+ VALUES 
+ ('1',40,59,53,52,204,95),
 diff --git a/ethereum/nft_traits/vf2_traits.sql b/ethereum/nft_traits/vf2_traits.sql
-index 6eab523..b7022ed 100644
+index 6eab523..0398367 100644
 --- a/ethereum/nft_traits/vf2_traits.sql
 +++ b/ethereum/nft_traits/vf2_traits.sql
-@@ -221000,7 +221000,7 @@ INSERT INTO vf2.traits(token_id, trait_type, trait_value) VALUES
- (55000,'Pose','Strategizing'),
- (55000,'Scene','Floor 55'),
- (55000,'Spectacular','None')
--;
-+ON CONFLICT DO NOTHING;
+@@ -2,15 +2,13 @@ BEGIN;
  
- CREATE INDEX IF NOT EXISTS vf2_traits_idx ON vf2.traits USING BRIN (token_id);
+ CREATE SCHEMA IF NOT EXISTS vf2;
  
+-DROP TABLE IF EXISTS vf2.traits;
+-
+ CREATE TABLE IF NOT EXISTS vf2.traits(
+     token_id INT,
+     trait_type VARCHAR(100),
+     trait_value VARCHAR(100)
+ );
+ 
+-
++TRUNCATE TABLE vf2.traits ;
+ INSERT INTO vf2.traits(token_id, trait_type, trait_value) VALUES
+ (0,'Character','"Content" Condor'),
+ (0,'Pose','Competing'),
 diff --git a/ethereum/nft_traits/wicked_cranium_attributes.sql b/ethereum/nft_traits/wicked_cranium_attributes.sql
-index 9bb78b7..1c46ad0 100644
+index 9bb78b7..b60fb96 100644
 --- a/ethereum/nft_traits/wicked_cranium_attributes.sql
 +++ b/ethereum/nft_traits/wicked_cranium_attributes.sql
-@@ -10771,6 +10771,7 @@ VALUES
- ('10758','WoodBark','Gin','3D','LogoTee','Paddy','Bandana'),
- ('10759','Pohutukawa','CarouselPink','Eyepatch','ChiefCranium','Construction','Noodles'),
- ('10760','Scrub','Golden','Shy','Chef','Ushanka','Moustache'),
--('10761','Scrub','TheOG','3D','FurCape','Bald','BoneMask');
-+('10761','Scrub','TheOG','3D','FurCape','Bald','BoneMask')
-+ON CONFLICT DO NOTHING;
- 
- CREATE INDEX IF NOT EXISTS wicked_cranium_attributes_idx ON wicked_cranium.wicked_cranium_attributes USING BRIN (token_id);
+@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS wicked_cranium.wicked_cranium_attributes (
+     head text,
+     mouth text
+ );
+-
++TRUNCATE TABLE wicked_cranium.wicked_cranium_attributes ;
+ INSERT INTO wicked_cranium.wicked_cranium_attributes (token_id, background, body, eyes, clothes, head, mouth)
+ VALUES
+ ('0','Scrub','LeopardO','Trippy','VarsityJacket','Leprechaun','Smoking'),
 diff --git a/ethereum/nft_traits/wrapped_strikers_stats.sql b/ethereum/nft_traits/wrapped_strikers_stats.sql
-index 738ba86..fc82a55 100644
+index 738ba86..5a7fec0 100644
 --- a/ethereum/nft_traits/wrapped_strikers_stats.sql
 +++ b/ethereum/nft_traits/wrapped_strikers_stats.sql
-@@ -10272,7 +10272,8 @@ VALUES
- (10257,30,'FALSE','Thibaut Courtois',162,162),
- (10258,28,'FALSE','Gabriel Jesus',161,161),
- (10259,26,'FALSE','Christian Eriksen',149,149),
--(10260,29,'FALSE','Thiago',157,157);
-+(10260,29,'FALSE','Thiago',157,157)
-+ON CONFLICT DO NOTHING;
- 
- CREATE INDEX IF NOT EXISTS wrapped_strikers_idx ON wrapped_strikers.wrapped_strikers_stats USING BRIN(token_id);
- COMMIT;
+@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS wrapped_strikers.wrapped_strikers_stats (
+    serial       INTEGER  NOT NULL,
+    supply       INTEGER  NOT NULL
+ );
+-
++TRUNCATE TABLE wrapped_strikers.wrapped_strikers_stats ;
+ INSERT INTO wrapped_strikers.wrapped_strikers_stats (token_id, checklist_id, iconic, player, serial, supply)
+ VALUES
+ (0,54,'FALSE','Medhi Benatia',1,79),
 diff --git a/ethereum/public/bytea2numeric.sql b/ethereum/public/bytea2numeric.sql
 index 4966658..cd7b2e0 100644
 --- a/ethereum/public/bytea2numeric.sql
@@ -2671,7 +3038,7 @@ index 8085765..0160b73 100644
  CREATE OR REPLACE FUNCTION synthetix.insert_synths(start_ts timestamptz, end_ts timestamptz=now()) RETURNS integer
  LANGUAGE plpgsql AS $function$
 diff --git a/ethereum/synthetix/trades.sql b/ethereum/synthetix/trades.sql
-index 3209095..eb6904c 100644
+index 3209095..f8e4ca9 100644
 --- a/ethereum/synthetix/trades.sql
 +++ b/ethereum/synthetix/trades.sql
 @@ -1,4 +1,4 @@
@@ -2680,6 +3047,15 @@ index 3209095..eb6904c 100644
      block_time timestamptz NOT NULL,
      token_a_amount numeric,
      token_b_amount numeric,
+@@ -13,7 +13,7 @@ CREATE TABLE synthetix.trades (
+     token_a_address bytea,
+     token_b_address bytea,
+     exchange_contract_address bytea NOT NULL,
+-    tx_hash bytea NOT NULL,
++    tx_hash text NOT NULL,
+     trace_address integer[],
+     evt_index integer,
+     trade_id integer
 diff --git a/ethereum/yamfinance/pools.sql b/ethereum/yamfinance/pools.sql
 index 821722a..f947e5d 100644
 --- a/ethereum/yamfinance/pools.sql
