@@ -84,17 +84,11 @@ def update_file_list(filename: str, files: Dict[str, File], new_files: Dict[str,
 
 def init_file_list(pathname: str) -> Dict[str, File]:
     files = dict()
-    insert = dict()
     for name in glob.glob(pathname, recursive=True):
         name = PureWindowsPath(name).as_posix()
         if name.endswith('_backfill.sql'):
             continue
-        file = File(name, sha256(name), 0, False)
-        if Path(name).name.startswith("insert"):
-            insert[name] = file
-        else:
-            files[name] = file
-    files.update(insert)
+        files[name] = File(name, sha256(name), 0, False)
     return files
 
 
@@ -110,11 +104,11 @@ def check_file_list(pathname: str, files: Dict[str, File]) -> (List[File], List[
         if name.endswith('_backfill.sql'):
             continue
         file = files.get(name, None)
-        if file.skip:
-            continue
         if not file:
             new_files.append(File(name, sha256(name), 0, False))
         else:
+            if file.skip:
+                continue
             hash = sha256(name)
             if hash != file.hash:
                 modified_files.append(File(name, hash, 0, False))
@@ -123,7 +117,7 @@ def check_file_list(pathname: str, files: Dict[str, File]) -> (List[File], List[
 
 def apply_patch(filename: str) -> int:
     if os.path.isfile(filename):
-        return call(['git', 'apply', filename])
+        return call(['git', 'apply', '--reject', filename])
     else:
         return 0
 
@@ -169,8 +163,7 @@ def apply_schema(files: List[File], env: Dict[str, str], backfill: bool = False)
             print("Skipping", file.name)
             continue
         print(file.name)
-        with Popen(['psql', '-v', 'ON_ERROR_STOP=1'], stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True,
-                   restore_signals=True, env=env) as psql:
+        with Popen(['psql', '-v', 'ON_ERROR_STOP=1'], stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True, restore_signals=True, env=env) as psql:
             with open(file.name, 'r') as f:
                 for i, line in enumerate(f.readlines(), start=1):
                     if backfill or file.split <= 0 or i < file.split:
@@ -178,6 +171,8 @@ def apply_schema(files: List[File], env: Dict[str, str], backfill: bool = False)
                         if backfill:
                             line = filter_max_block_expr(line)
                         print(line, file=psql.stdin, flush=True, end='')
+                        if not backfill and line.startswith("$function$"):
+                            break
             psql.stdin.close()
             for line in psql.stderr.readlines():
                 print(line, end='')
@@ -243,12 +238,16 @@ def main(args) -> int:
         revert_patch('ethereum')
         return 0
 
+    if args.apply_patch:
+        return apply_patch('patch.patch')
+
     if args.update_list:
         files = load_file_list('scripts.csv')
         new_files = init_file_list('ethereum/**/*.sql')
         new_files_, modified_files, removed_files = update_file_list('scripts.csv', files, new_files)
         print_updated_files(new_files_, modified_files, removed_files)
-        make_backfill_scripts('script-list.txt', files.values())
+        if args.make_backfill:
+            make_backfill_scripts('script-list.txt', files.values())
         return 0
 
     files = load_file_list('scripts.csv')
@@ -287,6 +286,8 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--skip-patch', dest='skip_patch', action='store_true', help='skip patch applying', default=False)
     parser.add_argument('-r', '--revert-patch', dest='revert_patch', action='store_true', help='revert patch modifications', default=False)
     parser.add_argument('-p', '--prepare', dest='prepare', action='store_true', help='use prepare.sql', default=False)
+    parser.add_argument('-m', '--make_backfill', dest='make_backfill', action='store_true', help='make backfill scripts', default=False)
+    parser.add_argument('-c', '--apply-patch', dest='apply_patch', action='store_true', help='only apply patch', default=False)
     args = parser.parse_args()
     print(args)
     return_code = main(args)

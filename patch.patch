@@ -608,6 +608,28 @@ index 69297dc..9f8c844 100644
      LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
      LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
      LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
+diff --git a/ethereum/dex/trades/insert_clipper_v2.sql b/ethereum/dex/trades/insert_clipper_v2.sql
+index 88287d8..6644500 100644
+--- a/ethereum/dex/trades/insert_clipper_v2.sql
++++ b/ethereum/dex/trades/insert_clipper_v2.sql
+@@ -36,7 +36,7 @@ WITH rows AS (
+         project,
+         version,
+         category,
+-        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
++        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
+         trader_b,
+         token_a_amount_raw,
+         token_b_amount_raw,
+@@ -79,8 +79,6 @@ WITH rows AS (
+         ON dexs.tx_hash = tx.hash
+         AND tx.block_time >= start_ts
+         AND tx.block_time < end_ts
+-        AND tx.block_number >= start_block
+-        AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_cofix.sql b/ethereum/dex/trades/insert_cofix.sql
 index 5b8d5ea..be29392 100644
 --- a/ethereum/dex/trades/insert_cofix.sql
@@ -653,27 +675,27 @@ index c7955f1..a0cf664 100644
      LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
      LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
 diff --git a/ethereum/dex/trades/insert_curve.sql b/ethereum/dex/trades/insert_curve.sql
-index c0604e8..b6d7e12 100644
+index 6dbb101..f2d4f50 100644
 --- a/ethereum/dex/trades/insert_curve.sql
 +++ b/ethereum/dex/trades/insert_curve.sql
-@@ -36,7 +36,7 @@ WITH rows AS (
+@@ -1353,7 +1353,7 @@ WITH rows AS (
          project,
          version,
-         category,
+         'DEX' AS category,
 -        coalesce(trader_a, tx."from") as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
 +        coalesce(trader_a, tx."from"::BYTEA) as trader_a, -- subqueries rely on this COALESCE to avoid redundant joins with the transactions table
          trader_b,
          token_a_amount_raw,
          token_b_amount_raw,
-@@ -78,8 +78,6 @@ WITH rows AS (
-         ON dexs.tx_hash = tx.hash
-         AND tx.block_time >= start_ts
-         AND tx.block_time < end_ts
--        AND tx.block_number >= start_block
--        AND tx.block_number < end_block
-     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = dexs.token_a_address
-     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
-     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', dexs.block_time)
+@@ -1374,8 +1374,6 @@ WITH rows AS (
+     INNER JOIN ethereum.transactions tx ON ct.tx_hash = tx.hash
+             AND tx.block_time >= start_ts
+             AND tx.block_time < end_ts
+-            AND tx.block_number >= start_block
+-            AND tx.block_number < end_block
+     LEFT JOIN erc20.tokens erc20a ON erc20a.contract_address = ct.token_a_address
+     LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = ct.token_b_address
+     LEFT JOIN prices.usd pa ON pa.minute = date_trunc('minute', ct.block_time)
 diff --git a/ethereum/dex/trades/insert_ddex.sql b/ethereum/dex/trades/insert_ddex.sql
 index 85f6b7c..f89f33b 100644
 --- a/ethereum/dex/trades/insert_ddex.sql
@@ -1640,7 +1662,7 @@ index a74275a..725f650 100644
          evt_block_time
      FROM
 diff --git a/ethereum/gnosis_protocol/view_balances.sql b/ethereum/gnosis_protocol/view_balances.sql
-index 27d090b..c192fb2 100644
+index 909e3fc..35e95aa 100644
 --- a/ethereum/gnosis_protocol/view_balances.sql
 +++ b/ethereum/gnosis_protocol/view_balances.sql
 @@ -1,6 +1,7 @@
@@ -1660,10 +1682,10 @@ index 27d090b..c192fb2 100644
 -CREATE INDEX view_balances_1 ON gnosis_protocol.view_balances (token);
 +CREATE INDEX IF NOT EXISTS view_balances_1 ON gnosis_protocol.view_balances (token);
  
- INSERT INTO cron.job (schedule, command)
- VALUES ('*/5 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_balances')
+ -- INSERT INTO cron.job (schedule, command)
+ -- VALUES ('*/5 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_balances')
 diff --git a/ethereum/gnosis_protocol/view_daily_average_prices.sql b/ethereum/gnosis_protocol/view_daily_average_prices.sql
-index c025f99..6c437f2 100644
+index 89303df..71721ab 100644
 --- a/ethereum/gnosis_protocol/view_daily_average_prices.sql
 +++ b/ethereum/gnosis_protocol/view_daily_average_prices.sql
 @@ -1,6 +1,7 @@
@@ -1685,10 +1707,10 @@ index c025f99..6c437f2 100644
 +CREATE INDEX IF NOT EXISTS view_daily_average_prices_1 ON gnosis_protocol.view_daily_average_prices (day);
 +CREATE INDEX IF NOT EXISTS view_daily_average_prices_2 ON gnosis_protocol.view_daily_average_prices (symbol);
  
- INSERT INTO cron.job (schedule, command)
- -- Every 6 hours.
+ -- INSERT INTO cron.job (schedule, command)
+ -- -- Every 6 hours.
 diff --git a/ethereum/gnosis_protocol/view_movement.sql b/ethereum/gnosis_protocol/view_movement.sql
-index ea515e6..c7410c8 100644
+index 90c59c3..7db3762 100644
 --- a/ethereum/gnosis_protocol/view_movement.sql
 +++ b/ethereum/gnosis_protocol/view_movement.sql
 @@ -1,6 +1,7 @@
@@ -1712,10 +1734,10 @@ index ea515e6..c7410c8 100644
 +CREATE INDEX IF NOT EXISTS view_movement_2 ON gnosis_protocol.view_movement (token);
 +CREATE INDEX IF NOT EXISTS view_movement_3 ON gnosis_protocol.view_movement (batch_id);
  
- INSERT INTO cron.job (schedule, command)
- VALUES ('*/5 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_movement')
+ -- INSERT INTO cron.job (schedule, command)
+ -- VALUES ('*/5 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_movement')
 diff --git a/ethereum/gnosis_protocol/view_price_batch.sql b/ethereum/gnosis_protocol/view_price_batch.sql
-index e625260..3918072 100644
+index 5014924..7eec58e 100644
 --- a/ethereum/gnosis_protocol/view_price_batch.sql
 +++ b/ethereum/gnosis_protocol/view_price_batch.sql
 @@ -1,6 +1,7 @@
@@ -1739,10 +1761,10 @@ index e625260..3918072 100644
 +CREATE INDEX IF NOT EXISTS view_price_batch_idx_2 ON gnosis_protocol.view_price_batch (symbol);
 +CREATE INDEX IF NOT EXISTS view_price_batch_idx_3 ON gnosis_protocol.view_price_batch (price_date);
  
- INSERT INTO cron.job (schedule, command)
- VALUES ('*/5 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_price_batch')
+ -- INSERT INTO cron.job (schedule, command)
+ -- VALUES ('*/5 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_price_batch')
 diff --git a/ethereum/gnosis_protocol/view_tokens.sql b/ethereum/gnosis_protocol/view_tokens.sql
-index 6e612e0..e045df0 100644
+index 08eecb2..fc6c02f 100644
 --- a/ethereum/gnosis_protocol/view_tokens.sql
 +++ b/ethereum/gnosis_protocol/view_tokens.sql
 @@ -1,6 +1,7 @@
@@ -1764,10 +1786,10 @@ index 6e612e0..e045df0 100644
 +CREATE INDEX IF NOT EXISTS view_tokens_1 ON gnosis_protocol.view_tokens (symbol);
 +CREATE INDEX IF NOT EXISTS view_tokens_2 ON gnosis_protocol.view_tokens (token);
  
- INSERT INTO cron.job (schedule, command)
- VALUES ('*/5 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_tokens')
+ -- INSERT INTO cron.job (schedule, command)
+ -- VALUES ('*/5 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_tokens')
 diff --git a/ethereum/gnosis_protocol/view_trade_stats.sql b/ethereum/gnosis_protocol/view_trade_stats.sql
-index 65e8d4f..c8a4b3c 100644
+index 3298dff..9f09cdd 100644
 --- a/ethereum/gnosis_protocol/view_trade_stats.sql
 +++ b/ethereum/gnosis_protocol/view_trade_stats.sql
 @@ -1,6 +1,7 @@
@@ -1780,7 +1802,7 @@ index 65e8d4f..c8a4b3c 100644
  WITH trades as (
      SELECT 
          trades.trade_date,
-@@ -69,11 +70,11 @@ LEFT OUTER JOIN decoded_analalytics decoded
+@@ -69,8 +70,8 @@ LEFT OUTER JOIN decoded_analalytics decoded
  
  
  CREATE UNIQUE INDEX IF NOT EXISTS view_trade_stats_id ON gnosis_protocol.view_trade_stats (batch_id, trader, order_id, trade_sub_id);
@@ -1790,13 +1812,9 @@ index 65e8d4f..c8a4b3c 100644
 +CREATE INDEX IF NOT EXISTS view_trade_stats_idx_2 ON gnosis_protocol.view_trade_stats (trade_date);
  
  
- INSERT INTO cron.job (schedule, command)
--VALUES ('*/10 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_trades')
-+VALUES ('*/10 * * * *', 'REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_trade_stats')
- ON CONFLICT (command) DO UPDATE SET schedule=EXCLUDED.schedule;
- COMMIT;
+ -- INSERT INTO cron.job (schedule, command)
 diff --git a/ethereum/gnosis_protocol/view_trades.sql b/ethereum/gnosis_protocol/view_trades.sql
-index 56a688c..b3dc85d 100644
+index c4a8736..87c7fd4 100644
 --- a/ethereum/gnosis_protocol/view_trades.sql
 +++ b/ethereum/gnosis_protocol/view_trades.sql
 @@ -1,7 +1,8 @@
@@ -1830,16 +1848,10 @@ index 56a688c..b3dc85d 100644
  
  
 diff --git a/ethereum/gnosis_protocol_v2/batches.sql b/ethereum/gnosis_protocol_v2/batches.sql
-index 91ceec5..fbab6a4 100644
+index 0f0cdde..fbab6a4 100644
 --- a/ethereum/gnosis_protocol_v2/batches.sql
 +++ b/ethereum/gnosis_protocol_v2/batches.sql
-@@ -1,4 +1,4 @@
--CREATE TABLE gnosis_protocol_v2.batches
-+CREATE TABLE IF NOT EXISTS gnosis_protocol_v2.batches
- (
-     block_time      timestamptz NOT NULL,
-     num_trades      int8        NOT NULL,
-@@ -7,7 +7,7 @@ CREATE TABLE gnosis_protocol_v2.batches
+@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS gnosis_protocol_v2.batches
      gas_per_trade   numeric,
      solver_address  bytea       NOT NULL,
      solver_name     text,
@@ -1848,16 +1860,14 @@ index 91ceec5..fbab6a4 100644
      gas_price_gwei  float8,
      gas_used        numeric,
      tx_cost_usd     numeric,
-@@ -17,7 +17,7 @@ CREATE TABLE gnosis_protocol_v2.batches
-     token_approvals int8
+@@ -18,6 +18,6 @@ CREATE TABLE IF NOT EXISTS gnosis_protocol_v2.batches
  );
  
--CREATE UNIQUE INDEX IF NOT EXISTS batches_id ON gnosis_protocol_v2.view_batches (tx_hash);
--CREATE INDEX batches_idx_1 ON gnosis_protocol_v2.view_batches (block_time);
--CREATE INDEX batches_idx_2 ON gnosis_protocol_v2.view_batches (solver_address);
--CREATE INDEX batches_idx_3 ON gnosis_protocol_v2.view_batches (num_trades);
+ CREATE UNIQUE INDEX IF NOT EXISTS batches_id ON gnosis_protocol_v2.batches (tx_hash);
+-CREATE INDEX batches_idx_1 ON gnosis_protocol_v2.batches (block_time);
+-CREATE INDEX batches_idx_2 ON gnosis_protocol_v2.batches (solver_address);
+-CREATE INDEX batches_idx_3 ON gnosis_protocol_v2.batches (num_trades);
 \ No newline at end of file
-+CREATE UNIQUE INDEX IF NOT EXISTS batches_id ON gnosis_protocol_v2.batches (tx_hash);
 +CREATE INDEX IF NOT EXISTS batches_idx_1 ON gnosis_protocol_v2.batches (block_time);
 +CREATE INDEX IF NOT EXISTS batches_idx_2 ON gnosis_protocol_v2.batches (solver_address);
 +CREATE INDEX IF NOT EXISTS batches_idx_3 ON gnosis_protocol_v2.batches (num_trades);
@@ -1936,62 +1946,21 @@ index 1ea6aa9..c6f3740 100644
 +CREATE INDEX IF NOT EXISTS trades_idx_4 ON gnosis_protocol_v2.trades (trader);
 +CREATE INDEX IF NOT EXISTS trades_idx_5 ON gnosis_protocol_v2.trades (app_data);
 +CREATE INDEX IF NOT EXISTS trades_idx_6 ON gnosis_protocol_v2.trades (tx_hash);
-diff --git a/ethereum/gnosis_protocol_v2/view_batches.sql b/ethereum/gnosis_protocol_v2/view_batches.sql
-index 6f56989..d5fe484 100644
---- a/ethereum/gnosis_protocol_v2/view_batches.sql
-+++ b/ethereum/gnosis_protocol_v2/view_batches.sql
-@@ -1,7 +1,6 @@
- BEGIN;
--DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol_v2.view_batches;
- 
--CREATE MATERIALIZED VIEW gnosis_protocol_v2.view_batches AS
-+CREATE MATERIALIZED VIEW IF NOT EXISTS gnosis_protocol_v2.view_batches AS
- WITH batch_counts AS (
-     SELECT s.evt_block_time,
-            s.evt_tx_hash,
-@@ -39,7 +38,7 @@ WITH batch_counts AS (
-                         OR name = 'ParaSwap'
-                         OR name = '0x'
-                         OR name = 'Legacy'
--                        THEN (select count(*) from dex.trades where tx_hash = evt_tx_hash and category = 'DEX')
-+                        THEN (select count(*) from dex.trades where tx_hash = evt_tx_hash::BYTEA and category = 'DEX')
-                     ELSE dex_swaps END                       as dex_swaps,
-                 batch_value,
-                 tx.gas_used / num_trades                     as gas_per_trade,
-@@ -70,9 +69,9 @@ ORDER BY block_time DESC;
- 
- 
- CREATE UNIQUE INDEX IF NOT EXISTS view_batches_id ON gnosis_protocol_v2.view_batches (tx_hash);
--CREATE INDEX view_batches_idx_1 ON gnosis_protocol_v2.view_batches (block_time);
--CREATE INDEX view_batches_idx_2 ON gnosis_protocol_v2.view_batches (solver_address);
--CREATE INDEX view_batches_idx_3 ON gnosis_protocol_v2.view_batches (num_trades);
-+CREATE INDEX IF NOT EXISTS view_batches_idx_1 ON gnosis_protocol_v2.view_batches (block_time);
-+CREATE INDEX IF NOT EXISTS view_batches_idx_2 ON gnosis_protocol_v2.view_batches (solver_address);
-+CREATE INDEX IF NOT EXISTS view_batches_idx_3 ON gnosis_protocol_v2.view_batches (num_trades);
- 
- 
- INSERT INTO cron.job (schedule, command)
 diff --git a/ethereum/gnosis_protocol_v2/view_solvers.sql b/ethereum/gnosis_protocol_v2/view_solvers.sql
-index ee522dd..c39e111 100644
+index 6e6862d..8b9eaa7 100644
 --- a/ethereum/gnosis_protocol_v2/view_solvers.sql
 +++ b/ethereum/gnosis_protocol_v2/view_solvers.sql
-@@ -1,12 +1,12 @@
--BEGIN;
--DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol_v2.view_batches; -- due to downstream dependency, drop view_batches -- remember to rebuild after this script!
--COMMIT;
+@@ -1,9 +1,9 @@
 -BEGIN;
 -DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol_v2.view_solvers;
 -COMMIT;
-+--BEGIN;
-+--DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol_v2.view_batches; -- due to downstream dependency, drop view_batches -- remember to rebuild after this script!
-+--COMMIT;
 +--BEGIN;
 +--DROP MATERIALIZED VIEW IF EXISTS gnosis_protocol_v2.view_solvers;
 +--COMMIT;
  
  BEGIN;
 -CREATE MATERIALIZED VIEW gnosis_protocol_v2.view_solvers (address, environment, name, active) AS
-+CREATE MATERIALIZED VIEW IF EXISTS NOT gnosis_protocol_v2.view_solvers (address, environment, name, active) AS
++CREATE MATERIALIZED VIEW IF NOT EXISTS gnosis_protocol_v2.view_solvers (address, environment, name, active) AS
  WITH
  -- Aggregate the solver added and removed events into a single table
  -- with true/false for adds/removes respectively
@@ -2890,18 +2859,18 @@ index 6eab523..0398367 100644
  (0,'Character','"Content" Condor'),
  (0,'Pose','Competing'),
 diff --git a/ethereum/nft_traits/wicked_cranium_attributes.sql b/ethereum/nft_traits/wicked_cranium_attributes.sql
-index 9bb78b7..b60fb96 100644
+index 9bb78b7..c3408e9 100644
 --- a/ethereum/nft_traits/wicked_cranium_attributes.sql
 +++ b/ethereum/nft_traits/wicked_cranium_attributes.sql
-@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS wicked_cranium.wicked_cranium_attributes (
-     head text,
-     mouth text
- );
--
-+TRUNCATE TABLE wicked_cranium.wicked_cranium_attributes ;
- INSERT INTO wicked_cranium.wicked_cranium_attributes (token_id, background, body, eyes, clothes, head, mouth)
- VALUES
- ('0','Scrub','LeopardO','Trippy','VarsityJacket','Leprechaun','Smoking'),
+@@ -10771,6 +10771,7 @@ VALUES
+ ('10758','WoodBark','Gin','3D','LogoTee','Paddy','Bandana'),
+ ('10759','Pohutukawa','CarouselPink','Eyepatch','ChiefCranium','Construction','Noodles'),
+ ('10760','Scrub','Golden','Shy','Chef','Ushanka','Moustache'),
+-('10761','Scrub','TheOG','3D','FurCape','Bald','BoneMask');
++('10761','Scrub','TheOG','3D','FurCape','Bald','BoneMask')
++ON CONFLICT DO NOTHING ;
+ 
+ CREATE INDEX IF NOT EXISTS wicked_cranium_attributes_idx ON wicked_cranium.wicked_cranium_attributes USING BRIN (token_id);
 diff --git a/ethereum/nft_traits/wrapped_strikers_stats.sql b/ethereum/nft_traits/wrapped_strikers_stats.sql
 index 738ba86..5a7fec0 100644
 --- a/ethereum/nft_traits/wrapped_strikers_stats.sql

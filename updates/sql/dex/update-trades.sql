@@ -88,6 +88,12 @@
         max_block_number_lt((SELECT max(block_time) - interval '1 days' FROM dex.trades WHERE project='Clipper')),
         max_block_number_lt(now() - interval '20 minutes'));
 
+    SELECT dex.insert_clipper_v2(
+        (SELECT max(block_time) - interval '1 days' FROM dex.trades WHERE project='Clipper' AND version='2'),
+        now() - interval '20 minutes',
+        max_block_number_lt((SELECT max(block_time) - interval '1 days' FROM dex.trades WHERE project='Clipper' AND version='2')),
+        max_block_number_lt(now() - interval '20 minutes'));
+
     SELECT dex.insert_dodo(
         (SELECT max(block_time) - interval '1 days' FROM dex.trades WHERE project='DODO'),
         now() - interval '20 minutes',

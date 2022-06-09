@@ -18,8 +18,6 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_daily_average_prices
 
 REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol.view_trade_stats ;
 
--- REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_safe.view_safes ;
+REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_safe.view_safes ;
 
 REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol_v2.view_solvers ;
-
--- REFRESH MATERIALIZED VIEW CONCURRENTLY gnosis_protocol_v2.view_batches ;
