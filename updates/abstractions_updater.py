@@ -59,7 +59,6 @@ with models.DAG(
         sql='sql/dex/update-trades.sql',
         dag=dag
     )
-    dex_update_trades.set_upstream(apply_schema_update)
 
     dex_update = PostgresOperator(
         task_id='dex-update-task',
@@ -67,7 +66,6 @@ with models.DAG(
         sql='sql/dex/update.sql',
         dag=dag
     )
-    dex_update.set_upstream(apply_schema_update)
 
     erc20_update = PostgresOperator(
         task_id='erc20-update-task',
@@ -107,15 +105,6 @@ with models.DAG(
         sql='sql/nft/update.sql',
         dag=dag
     )
-    nft_update.set_upstream(apply_schema_update)
-
-    prices_update = PostgresOperator(
-        task_id='prices-update-task',
-        postgres_conn_id='analytics-pg',
-        sql='sql/prices/update.sql',
-        dag=dag
-    )
-    prices_update.set_upstream(apply_schema_update)
 
     setprotocol_v2_update = PostgresOperator(
         task_id='setprotocol_v2-update-task',
@@ -171,7 +160,6 @@ with models.DAG(
         sql='sql/prices/update.sql',
         dag=dag
     )
-    dex_prices_update.set_upstream(apply_schema_update)
 
     dex_update_trades.set_upstream([balancer_update, gnosis_update, synthetix_update, zeroex_update])
     dex_update.set_upstream(dex_update_trades)
