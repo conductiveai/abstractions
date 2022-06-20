@@ -241,7 +241,7 @@ index ccacfde..1d05760 100644
  WITH base_locks AS (
          SELECT d.provider, ts AS locked_at, locktime AS unlocked_at, ts AS updated_at
 diff --git a/ethereum/balancer_v1/view_liquidity.sql b/ethereum/balancer_v1/view_liquidity.sql
-index 780e42a..09f7591 100644
+index 7ea8688..4e3c11d 100644
 --- a/ethereum/balancer_v1/view_liquidity.sql
 +++ b/ethereum/balancer_v1/view_liquidity.sql
 @@ -2,9 +2,8 @@ BEGIN;
@@ -873,7 +873,7 @@ index 525db7a..db1919d 100644
      LEFT JOIN erc20.tokens erc20b ON erc20b.contract_address = dexs.token_b_address
      LEFT JOIN prices.usd pa 
 diff --git a/ethereum/dex/trades/insert_hashflow.sql b/ethereum/dex/trades/insert_hashflow.sql
-index c2b2952..24710b6 100644
+index 9c83ae5..778442d 100644
 --- a/ethereum/dex/trades/insert_hashflow.sql
 +++ b/ethereum/dex/trades/insert_hashflow.sql
 @@ -32,8 +32,6 @@ WITH aux AS (
@@ -3176,12 +3176,13 @@ index df2e5bd..edaf66c 100644
        								AND all_tx.taker_token = tp.contract_address
                                                                  AND tp.minute >= start_ts
 diff --git a/ethereum/zeroex/view_affiliate_data.sql b/ethereum/zeroex/view_affiliate_data.sql
-index f5e9bb2..f3890ea 100644
+index f5e9bb2..c0eeb16 100644
 --- a/ethereum/zeroex/view_affiliate_data.sql
 +++ b/ethereum/zeroex/view_affiliate_data.sql
 @@ -1,7 +1,7 @@
  BEGIN;
- DROP TABLE IF EXISTS zeroex.view_api_affiliate_data;
+-DROP TABLE IF EXISTS zeroex.view_api_affiliate_data;
++--DROP TABLE IF EXISTS zeroex.view_api_affiliate_data;
  CREATE TABLE IF NOT EXISTS zeroex.view_api_affiliate_data (
 -    tx_hash BYTEA
 +    tx_hash TEXT
